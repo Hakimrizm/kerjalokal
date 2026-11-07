@@ -11,6 +11,7 @@ import {
   Download,
   FileText,
   LoaderCircle,
+  LockKeyhole,
   Send,
   X,
 } from "lucide-react";
@@ -24,7 +25,13 @@ function safeFileName(value: string) {
     .slice(0, 60) || "Pencari-Kerja";
 }
 
-export function JobApplicationButton({ jobId }: { jobId: string }) {
+export function JobApplicationButton({
+  jobId,
+  canApply = true,
+}: {
+  jobId: string;
+  canApply?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [coverLetter, setCoverLetter] = useState("");
@@ -168,6 +175,25 @@ export function JobApplicationButton({ jobId }: { jobId: string }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!canApply) {
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          title="Fitur melamar hanya tersedia untuk akun pencari kerja."
+          className="btn min-h-12 w-full cursor-not-allowed rounded-xl border-0 bg-[#AEB8BE] text-sm font-extrabold text-white opacity-80"
+        >
+          <LockKeyhole size={16} /> Lamar Sekarang
+        </button>
+        <p className="text-center text-[11px] leading-5 text-[#8A969D]">
+          Fitur melamar hanya tersedia untuk akun pencari kerja.
+        </p>
+      </div>
+    );
   }
 
   if (applied) {

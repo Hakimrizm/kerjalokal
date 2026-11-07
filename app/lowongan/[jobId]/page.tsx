@@ -57,6 +57,24 @@ export default async function PublicJobDetailPage({ params }: PageProps) {
 		)
 		.eq("user_id", job.employer_id)
 		.maybeSingle();
+
+	// Hanya akun pencari kerja yang boleh mengirim lamaran.
+	// Pengunjung tanpa sesi tetap dapat menekan tombol untuk diarahkan login
+	// melalui alur pengiriman lamaran yang sudah tersedia.
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	let canApply = !user;
+
+	if (user) {
+		const { data: roleRow } = await supabase
+			.from("user_roles")
+			.select("role")
+			.eq("user_id", user.id)
+			.maybeSingle();
+		canApply = roleRow?.role === "job_seeker";
+	}
+
 	return (
 		<main className="min-h-screen bg-[#F3F5F6] px-4 py-7 text-[#2C3E50] sm:px-6 lg:px-8">
 			<div className="mx-auto max-w-5xl">
@@ -203,7 +221,7 @@ export default async function PublicJobDetailPage({ params }: PageProps) {
 								</div>
 							</div>
 							<div className="mt-5 border-t border-[#EEF1F2] pt-5">
-								<JobApplicationButton jobId={job.id} />
+								<JobApplicationButton jobId={job.id} canApply={canApply} />
 								<FraudReportButton jobId={job.id} />
 							</div>
 						</section>
