@@ -12,8 +12,9 @@ export default async function NewEmployerJobPage() {
   if (!user) redirect("/auth/login");
   const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
   if (role?.role !== "employer") redirect("/dashboard/pencari-kerja");
-  const { data: profile } = await supabase.from("employer_profiles").select("profile_completed,province,city,district,village,address").eq("user_id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("employer_profiles").select("profile_completed,verification_status,province,city,district,village,address").eq("user_id", user.id).maybeSingle();
   if (!profile?.profile_completed) redirect("/onboarding/employer");
+  if (profile.verification_status !== "verified") redirect("/dashboard/pelaku-usaha");
 
   return <main className="min-h-screen bg-[#F3F5F6] px-4 py-7 text-[#2C3E50] sm:px-6 lg:px-8"><div className="mx-auto max-w-5xl"><Link href="/dashboard/pelaku-usaha/lowongan" className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-[#7F8C8D] hover:text-[#2C3E50]"><ArrowLeft size={15}/> Kembali ke Kelola Lowongan</Link><EmployerJobForm employerId={user.id} defaultLocation={profile}/></div></main>;
 }

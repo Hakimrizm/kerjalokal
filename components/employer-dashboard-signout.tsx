@@ -17,7 +17,7 @@ export function EmployerDashboardSignOut() {
       setLoading(false);
       return;
     }
-    router.replace("/auth/login");
+    router.replace("/");
     router.refresh();
   }
 

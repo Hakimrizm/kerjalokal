@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EmployerJobActions } from "@/components/employer-job-actions";
-import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, FilePlus2, MapPin, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, Clock3, FilePlus2, MapPin, Users } from "lucide-react";
 
 export const instant = false;
 
@@ -16,7 +16,11 @@ export default async function EmployerJobsPage() {
   if (!user) redirect("/auth/login");
   const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
   if (role?.role !== "employer") redirect("/dashboard/pencari-kerja");
-  const { data: jobs } = await supabase.from("jobs").select("*").eq("employer_id", user.id).order("created_at", { ascending: false });
+  const [{ data: jobs }, { data: employerProfile }] = await Promise.all([
+    supabase.from("jobs").select("*").eq("employer_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("employer_profiles").select("verification_status").eq("user_id", user.id).maybeSingle(),
+  ]);
+  const canCreateJob = employerProfile?.verification_status === "verified";
   const rows = jobs ?? [];
   const ids = rows.map((job) => job.id);
   const { data: applications } = ids.length ? await supabase.from("job_applications").select("id,job_id").in("job_id", ids) : { data: [] as {id:string;job_id:string}[] };
@@ -28,7 +32,11 @@ export default async function EmployerJobsPage() {
       <div className="mx-auto max-w-6xl">
         <header className="mb-7 flex flex-wrap items-center justify-between gap-3">
           <div><Link href="/dashboard/pelaku-usaha" className="inline-flex items-center gap-2 text-xs font-bold text-[#7F8C8D] hover:text-[#2C3E50]"><ArrowLeft size={15} /> Dashboard usaha</Link><h1 className="mt-3 text-2xl font-extrabold tracking-tight sm:text-3xl">Kelola lowongan</h1><p className="mt-1 text-sm text-[#7F8C8D]">Pantau status publikasi dan pelamar pada setiap posisi.</p></div>
-          <Link href="/dashboard/pelaku-usaha/lowongan/baru" className="btn btn-primary min-h-11 rounded-xl border-0 bg-[#2C3E50] px-5 text-xs font-bold text-white hover:bg-[#34495E]"><FilePlus2 size={16} /> Buat Lowongan</Link>
+          {canCreateJob ? (
+            <Link href="/dashboard/pelaku-usaha/lowongan/baru" className="btn btn-primary min-h-11 rounded-xl border-0 bg-[#2C3E50] px-5 text-xs font-bold text-white hover:bg-[#34495E]"><FilePlus2 size={16} /> Buat Lowongan</Link>
+          ) : (
+            <span className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#EADCB9] bg-[#FFF9EC] px-4 text-xs font-bold text-[#80632C]"><Clock3 size={15}/> Menunggu verifikasi usaha</span>
+          )}
         </header>
 
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
@@ -41,7 +49,7 @@ export default async function EmployerJobsPage() {
               <div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-extrabold text-[#2C3E50]">{job.title}</h2><span className={`badge badge-sm ${classes[job.status] ?? "badge-ghost"}`}>{labels[job.status] ?? job.status}</span></div>
               <p className="mt-2 text-xs text-[#7F8C8D]">{job.category} · {job.employment_type} · {job.vacancies} orang dibutuhkan</p>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-[#7F8C8D]"><span className="inline-flex items-center gap-1"><MapPin size={13}/>{job.district}, {job.city}</span><span className="inline-flex items-center gap-1"><CalendarDays size={13}/>Batas lamaran: {dateLabel(job.application_deadline)}</span><span className="inline-flex items-center gap-1"><Users size={13}/>{counts.get(job.id) ?? 0} pelamar</span></div>
-              {job.status === "pending_review" && <p className="mt-3 rounded-lg bg-[#FFF8E8] px-3 py-2 text-[11px] leading-5 text-[#80632C]">Lowongan sudah dikirim dan sedang menunggu pemeriksaan admin. Lowongan belum tampil untuk pencari kerja.</p>}
+              {job.status === "pending_review" && <p className="mt-3 rounded-lg bg-[#FFF8E8] px-3 py-2 text-[11px] leading-5 text-[#80632C]">Lowongan sudah dikirim dan menunggu pemeriksaan serta keputusan Super Admin. Lowongan belum tampil untuk pencari kerja.</p>}
               {job.status === "rejected" && job.rejection_reason && <p className="mt-3 rounded-lg bg-[#FCEEEE] px-3 py-2 text-[11px] leading-5 text-[#934444]">Catatan admin: {job.rejection_reason}</p>}
             </div>
             <div className="flex flex-wrap gap-2 lg:justify-end">

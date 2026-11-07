@@ -95,10 +95,11 @@ export function LoginForm({
             : "/onboarding/job-seeker",
         );
       } else if (
+        roleData.role === "admin" ||
         roleData.role === "super_admin" ||
         roleData.role === "fraud_admin"
       ) {
-        router.replace("/protected");
+        router.replace("/admin");
       } else {
         throw new Error("Role akun tidak dikenali. Hubungi administrator KerjaLokal.");
       }
@@ -165,6 +166,10 @@ export function LoginForm({
               {" · "}
               <Link href="/auth/sign-up/employer" className="font-bold text-[#2C3E50] underline underline-offset-4">
                 Pelaku usaha
+              </Link>
+              {" · "}
+              <Link href="/auth/admin-login" className="font-bold text-[#7F8C8D] underline underline-offset-4">
+                Admin
               </Link>
             </div>
           </form>

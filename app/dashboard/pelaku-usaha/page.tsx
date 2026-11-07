@@ -46,10 +46,11 @@ export default async function EmployerDashboardPage() {
   const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
   if (roleData?.role !== "employer") redirect("/dashboard/pencari-kerja");
 
-  const [{ data: profile }, { data: contact }, { data: jobs }] = await Promise.all([
+  const [{ data: profile }, { data: contact }, { data: jobs }, { data: notifications }] = await Promise.all([
     supabase.from("employer_profiles").select("*").eq("user_id", user.id).maybeSingle(),
     supabase.from("employer_contacts").select("*").eq("user_id", user.id).maybeSingle(),
     supabase.from("jobs").select("id,title,status,employment_type,created_at,application_deadline,city,district").eq("employer_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("user_notifications").select("id,title,message,notification_type,read_at,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
   ]);
 
   if (!profile?.profile_completed) redirect("/onboarding/employer");
@@ -90,7 +91,7 @@ export default async function EmployerDashboardPage() {
           </nav>
           <div className="mt-auto rounded-2xl bg-[#ECF0F1] p-4">
             <div className="flex items-center gap-2 text-xs font-bold text-[#34495E]"><ShieldAlert size={15} /> Verifikasi usaha</div>
-            <p className="mt-2 text-[11px] leading-5 text-[#7F8C8D]">{profile.verification_status === "verified" ? "Usaha telah terverifikasi." : "Profil usaha menunggu pemeriksaan admin. Lowongan yang dikirim akan masuk antrean review."}</p>
+            <p className="mt-2 text-[11px] leading-5 text-[#7F8C8D]">{profile.verification_status === "verified" ? "Usaha telah terverifikasi." : "Profil usaha sedang diperiksa Admin. Persetujuan akhir diberikan oleh Super Admin."}</p>
           </div>
         </aside>
 
@@ -122,7 +123,11 @@ export default async function EmployerDashboardPage() {
                   <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">Kelola kebutuhan rekrutmen, tinjau kandidat, dan temukan tenaga kerja dari wilayah sekitar usahamu.</p>
                   {location && <p className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#D5DEE3]"><MapPin size={15} /> {location}</p>}
                   <div className="mt-6 flex flex-wrap gap-3">
-                    <Link href="/dashboard/pelaku-usaha/lowongan/baru" className="btn min-h-11 rounded-full border-0 bg-[#ECF0F1] px-5 text-xs font-extrabold text-[#2C3E50] hover:bg-white"><FilePlus2 size={16} /> Buat Lowongan</Link>
+                    {profile.verification_status === "verified" ? (
+                      <Link href="/dashboard/pelaku-usaha/lowongan/baru" className="btn min-h-11 rounded-full border-0 bg-[#ECF0F1] px-5 text-xs font-extrabold text-[#2C3E50] hover:bg-white"><FilePlus2 size={16} /> Buat Lowongan</Link>
+                    ) : (
+                      <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 text-xs font-bold text-white/70"><Clock3 size={15}/> Menunggu verifikasi usaha</span>
+                    )}
                     <Link href="/dashboard/pelaku-usaha/lowongan" className="btn btn-outline min-h-11 rounded-full border-white/30 px-5 text-xs font-bold text-white hover:border-white hover:bg-white/10 hover:text-white">Kelola Lowongan</Link>
                   </div>
                 </div>
@@ -133,11 +138,45 @@ export default async function EmployerDashboardPage() {
               </div>
             </section>
 
+            {notifications && notifications.length > 0 && (
+              <section className="mt-6 overflow-hidden rounded-2xl border border-[#E2E7E9] bg-white shadow-sm">
+                <div className="border-b border-[#EEF1F2] px-5 py-3"><h2 className="text-xs font-extrabold text-[#34495E]">Pemberitahuan KerjaLokal</h2></div>
+                <div className="divide-y divide-[#EEF1F2]">
+                  {notifications.map((notification) => (
+                    <div key={notification.id} className="flex items-start gap-3 px-5 py-3.5">
+                      <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${notification.notification_type === "employer_verification" ? "bg-[#ECF0F1] text-[#34495E]" : "bg-[#F3F5F6] text-[#7F8C8D]"}`}><ShieldAlert size={15}/></span>
+                      <div className="min-w-0 flex-1"><p className="text-xs font-extrabold text-[#34495E]">{notification.title}</p><p className="mt-1 text-[11px] leading-5 text-[#7F8C8D]">{notification.message}</p><p className="mt-1 text-[9px] text-[#A0AAB0]">{formatDate(notification.created_at)}</p></div>
+                      {!notification.read_at && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#34495E]" title="Belum dibaca"/>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {profile.verification_status === "pending" && (
+              <section className="mt-6 flex items-start gap-3 rounded-2xl border border-[#EADCB9] bg-[#FFF9EC] p-5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F6EBCF] text-[#8A6A2E]"><Clock3 size={19}/></span>
+                <div><h2 className="text-sm font-extrabold text-[#725725]">Profil usaha sedang menunggu persetujuan</h2><p className="mt-1 text-xs leading-6 text-[#8A7045]">Data usaha kamu sudah tersimpan. Tim Admin sedang memeriksa informasi dan dokumen, kemudian Super Admin akan memberikan keputusan akhir. Kamu akan melihat pemberitahuan di dashboard ini setelah status berubah. Fitur membuat lowongan akan terbuka setelah usaha disetujui.</p></div>
+              </section>
+            )}
+            {profile.verification_status === "rejected" && (
+              <section className="mt-6 flex items-start gap-3 rounded-2xl border border-[#E8CACA] bg-[#FFF5F5] p-5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F8E4E4] text-[#A34E4E]"><ShieldAlert size={19}/></span>
+                <div><h2 className="text-sm font-extrabold text-[#934444]">Verifikasi usaha memerlukan perbaikan</h2><p className="mt-1 text-xs leading-6 text-[#A06464]">{profile.decision_notes || "Silakan periksa kembali data dan dokumen usaha yang kamu kirim."} Hubungi tim KerjaLokal jika membutuhkan bantuan.</p></div>
+              </section>
+            )}
+            {profile.verification_status === "verified" && (
+              <section className="mt-6 flex items-start gap-3 rounded-2xl border border-[#D6E8DC] bg-[#F1F8F3] p-4">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#DDEFE3] text-[#347052]"><CheckCircle2 size={17}/></span>
+                <div><h2 className="text-xs font-extrabold text-[#347052]">Usaha sudah terverifikasi</h2><p className="mt-1 text-[11px] leading-5 text-[#5E866E]">Kamu sudah dapat membuat lowongan dan mengirimkannya untuk moderasi sebelum tayang.</p></div>
+              </section>
+            )}
+
             <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {[
                 { label: "Total lowongan", value: jobRows.length, icon: BriefcaseBusiness, note: "Semua lowongan usaha" },
                 { label: "Lowongan tayang", value: activeJobs, icon: CheckCircle2, note: "Dapat menerima lamaran" },
-                { label: "Menunggu review", value: pendingJobs, icon: Clock3, note: "Dalam pemeriksaan admin" },
+                { label: "Menunggu review", value: pendingJobs, icon: Clock3, note: "Menunggu keputusan Super Admin" },
                 { label: "Total pelamar", value: totalApplications, icon: Users, note: "Dari seluruh lowongan" },
               ].map((item) => { const Icon = item.icon; return <article key={item.label} className="rounded-2xl border border-[#E2E7E9] bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><span className="text-xs font-semibold text-[#7F8C8D]">{item.label}</span><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><Icon size={17} /></span></div><p className="mt-3 text-2xl font-extrabold text-[#2C3E50]">{item.value}</p><p className="mt-1 text-[11px] text-[#8A969D]">{item.note}</p></article>; })}
             </section>

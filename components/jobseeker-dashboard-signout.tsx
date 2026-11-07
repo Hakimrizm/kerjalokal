@@ -19,7 +19,7 @@ export function JobSeekerDashboardSignOut() {
       return;
     }
 
-    router.replace("/auth/login");
+    router.replace("/");
     router.refresh();
   }
 
