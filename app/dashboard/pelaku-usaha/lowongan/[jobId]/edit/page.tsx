@@ -15,7 +15,7 @@ export default async function EditEmployerJobPage({ params }: PageProps) {
   if (!user) redirect("/auth/login");
   const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
   if (role?.role !== "employer") redirect("/dashboard/pencari-kerja");
-  const { data: profile } = await supabase.from("employer_profiles").select("profile_completed,province,city,district,village,address").eq("user_id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("employer_profiles").select("profile_completed,province,city,district,village,address,latitude,longitude").eq("user_id", user.id).maybeSingle();
   if (!profile?.profile_completed) redirect("/onboarding/employer");
   const { data: job } = await supabase.from("jobs").select("*").eq("id", jobId).eq("employer_id", user.id).maybeSingle();
   if (!job) notFound();

@@ -12,7 +12,7 @@ export default async function NewEmployerJobPage() {
   if (!user) redirect("/auth/login");
   const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
   if (role?.role !== "employer") redirect("/dashboard/pencari-kerja");
-  const { data: profile } = await supabase.from("employer_profiles").select("profile_completed,verification_status,province,city,district,village,address").eq("user_id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("employer_profiles").select("profile_completed,verification_status,province,city,district,village,address,latitude,longitude").eq("user_id", user.id).maybeSingle();
   if (!profile?.profile_completed) redirect("/onboarding/employer");
   if (profile.verification_status !== "verified") redirect("/dashboard/pelaku-usaha");
 

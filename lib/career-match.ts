@@ -182,7 +182,6 @@ function fallbackHeuristicMatch(
   applicant: ApplicantData,
   job: JobData
 ): CareerMatchResult {
-<<<<<<< HEAD
   const reqLower = `${job.title} ${job.category} ${job.description} ${job.requirements} ${job.responsibilities || ""}`.toLowerCase();
   const skillMatches: SkillMatch[] = applicant.skills.map((skill) => {
     const normalized = skill.toLowerCase().trim();
@@ -258,47 +257,10 @@ function fallbackHeuristicMatch(
         : score >= 50
           ? `Profil ${applicant.fullName} memiliki kecocokan sebagian dengan lowongan ${job.title}. Perhatikan persyaratan yang belum terlihat pada profil.`
           : `Kecocokan profil ${applicant.fullName} dengan lowongan ${job.title} masih terbatas berdasarkan informasi yang tersedia.`;
-=======
-  const reqLower = `${job.title} ${job.description} ${job.requirements} ${job.responsibilities || ""}`.toLowerCase();
-
-  let matchedSkillsCount = 0;
-  const skillMatches: SkillMatch[] = [];
-
-  applicant.skills.forEach((skill) => {
-    const sLower = skill.toLowerCase();
-    if (reqLower.includes(sLower)) {
-      matchedSkillsCount++;
-      skillMatches.push({ skill, status: "matched" });
-    } else {
-      skillMatches.push({ skill, status: "partial" });
-    }
-  });
-
-  const hasExp = applicant.experiences.length > 0;
-  const expMatch = applicant.experiences.some((e) =>
-    reqLower.includes(e.position.toLowerCase())
-  );
-
-  let score = 50;
-  if (matchedSkillsCount >= 3) score += 25;
-  else if (matchedSkillsCount >= 1) score += 15;
-
-  if (expMatch) score += 20;
-  else if (hasExp) score += 10;
-
-  if (applicant.certificates.length > 0) score += 5;
-  score = Math.min(score, 98);
-
-  let verdict: CareerMatchResult["verdict"] = "Cukup Cocok";
-  if (score >= 85) verdict = "Sangat Cocok";
-  else if (score >= 70) verdict = "Cocok";
-  else if (score < 50) verdict = "Perlu Penyesuaian";
->>>>>>> b96e565cc610b719a55391a3e68793219d83edfc
 
   return {
     match_score: score,
     verdict,
-<<<<<<< HEAD
     summary,
     strengths: strengths.length ? strengths : ["Informasi profil masih terbatas untuk mengidentifikasi kekuatan yang spesifik."],
     gaps: gaps.length ? gaps : ["Tidak ada kekurangan utama yang terdeteksi dari data profil yang tersedia."],
@@ -311,23 +273,3 @@ function fallbackHeuristicMatch(
     source: "heuristic",
   };
 }
-=======
-    summary: `Profil kualifikasi ${applicant.fullName} memiliki kecocokan yang baik dengan posisi ${job.title}. Memiliki keahlian utama yang relevan dan pengalaman yang dapat mendukung operasional usaha.`,
-    strengths: [
-      `Memiliki keterampilan dasar: ${applicant.skills.slice(0, 3).join(", ") || "komunikasi & kerja tim"}`,
-      hasExp ? "Memiliki riwayat pengalaman kerja yang relevan" : "Termotivasi dan siap belajar hal baru",
-      "Kualifikasi pendidikan memenuhi kriteria dasar posisi ini",
-    ],
-    gaps: [
-      score < 80 ? "Beberapa spesifikasi teknis mungkin memerlukan pelatihan awal dari pemberi kerja" : "Perlu penyesuaian dengan alur kerja internal spesifik perusahaan",
-    ],
-    recommendations: [
-      "Tonjolkan keahlian praktis dan kesiapan bekerja saat sesi wawancara",
-      "Pelajari profil dan produk usaha sebelum menghadiri wawancara",
-    ],
-    skill_matches: skillMatches.slice(0, 5),
-    source: "heuristic",
-  };
-}
-
->>>>>>> b96e565cc610b719a55391a3e68793219d83edfc

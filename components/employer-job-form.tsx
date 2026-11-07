@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, FileText, LoaderCircle, Send, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileText, LoaderCircle, Send, Save, MapPin } from "lucide-react";
 
 export type EmployerJobRecord = {
   id: string;
@@ -25,6 +25,8 @@ export type EmployerJobRecord = {
   district: string;
   village: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   status: string;
 };
 
@@ -47,6 +49,8 @@ type FormState = {
   district: string;
   village: string;
   address: string;
+  latitude: string;
+  longitude: string;
 };
 
 export function EmployerJobForm({
@@ -56,7 +60,7 @@ export function EmployerJobForm({
 }: {
   employerId: string;
   initialJob?: EmployerJobRecord | null;
-  defaultLocation?: { province?: string | null; city?: string | null; district?: string | null; village?: string | null; address?: string | null } | null;
+  defaultLocation?: { province?: string | null; city?: string | null; district?: string | null; village?: string | null; address?: string | null; latitude?: number | null; longitude?: number | null } | null;
 }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>({
@@ -78,12 +82,41 @@ export function EmployerJobForm({
     district: initialJob?.district ?? defaultLocation?.district ?? "",
     village: initialJob?.village ?? defaultLocation?.village ?? "",
     address: initialJob?.address ?? defaultLocation?.address ?? "",
+    latitude: initialJob?.latitude != null ? String(initialJob.latitude) : defaultLocation?.latitude != null ? String(defaultLocation.latitude) : "",
+    longitude: initialJob?.longitude != null ? String(initialJob.longitude) : defaultLocation?.longitude != null ? String(defaultLocation.longitude) : "",
   });
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function useCurrentLocation() {
+    setError(null);
+    if (!navigator.geolocation) {
+      setError("Browser tidak mendukung pengambilan lokasi. Kamu dapat memasukkan koordinat Google Maps secara manual.");
+      return;
+    }
+
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        update("latitude", position.coords.latitude.toFixed(7));
+        update("longitude", position.coords.longitude.toFixed(7));
+        setGeoLoading(false);
+      },
+      (geoError) => {
+        setGeoLoading(false);
+        setError(
+          geoError.code === 1
+            ? "Izin lokasi ditolak. Aktifkan izin lokasi browser atau masukkan koordinat Google Maps secara manual."
+            : "Lokasi belum dapat diperoleh. Silakan coba kembali atau masukkan koordinat secara manual.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 },
+    );
   }
 
   async function saveJob(mode: "draft" | "publish") {
@@ -93,6 +126,13 @@ export function EmployerJobForm({
     if (!form.description.trim() || form.description.trim().length < 30) return setError("Deskripsi pekerjaan minimal 30 karakter.");
     if (!form.requirements.trim() || form.requirements.trim().length < 10) return setError("Tuliskan persyaratan kandidat minimal 10 karakter.");
     if (!form.province.trim() || !form.city.trim() || !form.district.trim()) return setError("Lengkapi provinsi, kota/kabupaten, dan kecamatan lokasi kerja.");
+    if (Boolean(form.latitude.trim()) !== Boolean(form.longitude.trim())) return setError("Isi latitude dan longitude secara lengkap, atau kosongkan keduanya.");
+    if (form.latitude.trim() || form.longitude.trim()) {
+      const latitude = Number(form.latitude);
+      const longitude = Number(form.longitude);
+      if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) return setError("Latitude harus berupa angka antara -90 sampai 90.");
+      if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) return setError("Longitude harus berupa angka antara -180 sampai 180.");
+    }
     if (!form.salary_negotiable && form.salary_min && form.salary_max && Number(form.salary_min) > Number(form.salary_max)) return setError("Gaji minimum tidak boleh lebih besar dari gaji maksimum.");
     if (Number(form.vacancies) < 1) return setError("Jumlah tenaga kerja minimal 1 orang.");
 
@@ -125,6 +165,8 @@ export function EmployerJobForm({
         district: form.district.trim(),
         village: form.village.trim() || null,
         address: form.address.trim() || null,
+        latitude: form.latitude.trim() ? Number(form.latitude) : null,
+        longitude: form.longitude.trim() ? Number(form.longitude) : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -214,6 +256,27 @@ export function EmployerJobForm({
             <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Kecamatan *</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.district} onChange={(e) => update("district", e.target.value)} /></div>
             <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Desa / Kelurahan</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.village} onChange={(e) => update("village", e.target.value)} /></div>
             <div className="form-control sm:col-span-2"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Alamat / patokan tempat kerja</span></label><textarea className="textarea textarea-bordered min-h-20 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Alamat lengkap atau patokan lokasi kerja" /></div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-[#DCE3E6] bg-[#F8FAFA] p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2.5">
+                <MapPin size={17} className="mt-0.5 shrink-0 text-[#34495E]" />
+                <div>
+                  <p className="text-xs font-extrabold text-[#34495E]">Titik lokasi Maps (opsional, disarankan)</p>
+                  <p className="mt-1 text-[11px] leading-5 text-[#7F8C8D]">Koordinat ini digunakan untuk menghitung jarak lowongan dari domisili pencari kerja. Kamu dapat mengambil lokasi perangkat saat berada di tempat kerja atau menyalin latitude dan longitude dari Google Maps.</p>
+                  {form.latitude && form.longitude && <p className="mt-1 text-[10px] font-semibold text-emerald-700">Titik lokasi sudah diisi.</p>}
+                </div>
+              </div>
+              <button type="button" disabled={geoLoading} onClick={useCurrentLocation} className="btn btn-outline btn-sm min-h-10 shrink-0 rounded-lg border-[#7F8C8D] text-[11px] font-bold text-[#34495E] hover:border-[#2C3E50] hover:bg-white">
+                {geoLoading ? <LoaderCircle size={14} className="animate-spin" /> : <MapPin size={14} />}
+                {geoLoading ? "Mengambil lokasi..." : "Gunakan lokasi perangkat"}
+              </button>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="form-control"><label className="label py-1"><span className="label-text text-[11px] font-bold text-[#53616D]">Latitude</span></label><input className="input input-bordered h-10 rounded-lg border-[#D5DDE1] bg-white text-xs" inputMode="decimal" value={form.latitude} onChange={(e) => update("latitude", e.target.value)} placeholder="Contoh: -6.2000000" /></div>
+              <div className="form-control"><label className="label py-1"><span className="label-text text-[11px] font-bold text-[#53616D]">Longitude</span></label><input className="input input-bordered h-10 rounded-lg border-[#D5DDE1] bg-white text-xs" inputMode="decimal" value={form.longitude} onChange={(e) => update("longitude", e.target.value)} placeholder="Contoh: 106.8166660" /></div>
+            </div>
           </div>
         </section>
 

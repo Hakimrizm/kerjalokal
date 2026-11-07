@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -29,6 +29,7 @@ type JobListing = {
   city: string;
   district: string;
   province: string;
+  village: string | null;
   salary_min: number | null;
   salary_max: number | null;
   salary_negotiable: boolean;
@@ -40,6 +41,7 @@ type JobListing = {
   experience_level: string | null;
   education_level: string | null;
   business_name: string;
+  distance_km: number | null;
 };
 
 type AiAnalysis = {
@@ -84,14 +86,32 @@ function progressTone(score: number) {
   return "bg-rose-500";
 }
 
+function proximityScore(distanceKm: number | null) {
+  if (distanceKm == null) return null;
+  if (distanceKm <= 2) return 100;
+  if (distanceKm <= 5) return 95;
+  if (distanceKm <= 10) return 85;
+  if (distanceKm <= 20) return 70;
+  if (distanceKm <= 35) return 55;
+  if (distanceKm <= 50) return 40;
+  if (distanceKm <= 100) return 25;
+  return 10;
+}
+
+function formatDistance(distanceKm: number) {
+  return new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 }).format(distanceKm);
+}
+
 export function CareerMatchJobList({
   jobs,
   canUseCareerMatch,
   isAuthenticated,
+  hasApplicantCoordinates,
 }: {
   jobs: JobListing[];
   canUseCareerMatch: boolean;
   isAuthenticated: boolean;
+  hasApplicantCoordinates: boolean;
 }) {
   const jobIdKey = jobs.map((job) => job.id).join(",");
   const [matches, setMatches] = useState<Record<string, CareerMatchScore>>({});
@@ -102,6 +122,36 @@ export function CareerMatchJobList({
   const [aiAnalysis, setAiAnalysis] = useState<Record<string, AiAnalysis>>({});
   const [aiLoadingJobId, setAiLoadingJobId] = useState<string | null>(null);
   const [aiErrors, setAiErrors] = useState<Record<string, string>>({});
+
+  const sortedJobs = useMemo(() => {
+    const rank = (job: JobListing) => {
+      const matchScore = matches[job.id]?.match_score;
+      const nearbyScore = proximityScore(job.distance_km);
+
+      if (matchScore != null && nearbyScore != null) {
+        return matchScore * 0.75 + nearbyScore * 0.25;
+      }
+      if (matchScore != null) return matchScore;
+      if (nearbyScore != null) return nearbyScore;
+      return -1;
+    };
+
+    return [...jobs].sort((left, right) => {
+      const rankDifference = rank(right) - rank(left);
+      if (Math.abs(rankDifference) > 0.001) return rankDifference;
+
+      if (left.distance_km != null && right.distance_km != null) {
+        const distanceDifference = left.distance_km - right.distance_km;
+        if (Math.abs(distanceDifference) > 0.001) return distanceDifference;
+      } else if (left.distance_km != null) {
+        return -1;
+      } else if (right.distance_km != null) {
+        return 1;
+      }
+
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+    });
+  }, [jobs, matches]);
 
   useEffect(() => {
     if (!canUseCareerMatch || !jobIdKey) return;
@@ -186,6 +236,10 @@ export function CareerMatchJobList({
             <p className="mt-1 max-w-2xl text-xs leading-5 text-[#71818B]">
               Persentase kecocokan dihitung dengan membandingkan keahlian, pengalaman, pendidikan,
               preferensi posisi, domisili, jenis pekerjaan, dan ekspektasi gaji pada profilmu.
+              Urutan rekomendasi menggabungkan 75% kecocokan profil dan 25% kedekatan lokasi.
+            </p>
+            <p className="mt-1 text-[10px] leading-4 text-[#91A0A8]">
+              Jarak dihitung dari koordinat Maps sebagai jarak garis lurus, bukan jarak tempuh kendaraan.
             </p>
           </div>
         </div>
@@ -208,6 +262,19 @@ export function CareerMatchJobList({
         )}
       </section>
 
+      {canUseCareerMatch && !hasApplicantCoordinates && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          <span>Lengkapi titik lokasi pada profil agar jarak lowongan dari tempat tinggalmu dapat dihitung.</span>
+          <Link href="/dashboard/pencari-kerja/profil" className="font-extrabold underline underline-offset-2">Perbarui lokasi profil</Link>
+        </div>
+      )}
+
+      {canUseCareerMatch && hasApplicantCoordinates && jobs.some((job) => job.distance_km == null) && (
+        <div className="rounded-xl border border-[#DCE6EC] bg-white px-4 py-3 text-[11px] leading-5 text-[#71818B]">
+          Jarak hanya ditampilkan untuk lowongan yang memiliki titik koordinat Maps. Jika belum tersedia, jarak akan muncul setelah pelaku usaha melengkapi koordinat lokasi kerja.
+        </div>
+      )}
+
       {matchError && canUseCareerMatch && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
           <span className="flex items-center gap-2"><AlertCircle size={15} />{matchError}</span>
@@ -222,7 +289,7 @@ export function CareerMatchJobList({
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {jobs.map((job) => {
+        {sortedJobs.map((job, index) => {
           const match = matches[job.id];
           const isExpanded = expandedJobId === job.id;
           const ai = aiAnalysis[job.id];
@@ -239,6 +306,9 @@ export function CareerMatchJobList({
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#8A969D]">{job.category}</p>
+                    {canUseCareerMatch && index === 0 && (match?.match_score != null || job.distance_km != null) && (
+                      <span className="mt-1 inline-flex rounded-full bg-[#EAF1F5] px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-[#36566B]">Rekomendasi teratas</span>
+                    )}
                     <h2 className="mt-1 text-base font-extrabold text-[#2C3E50]">{job.title}</h2>
                     <p className="mt-1 text-xs font-semibold text-[#667681]">{job.business_name || "Usaha terverifikasi"}</p>
                   </div>
@@ -275,7 +345,13 @@ export function CareerMatchJobList({
                 </div>
 
                 <div className="mt-5 space-y-2 border-y border-[#EEF1F2] py-4 text-xs text-[#7F8C8D]">
-                  <p className="flex items-center gap-2"><MapPin size={14} />{job.district}, {job.city}</p>
+                  <p className="flex items-center gap-2"><MapPin size={14} />{[job.village, job.district, job.city, job.province].filter(Boolean).join(", ")}</p>
+                  {canUseCareerMatch && (
+                    <p className="flex items-center gap-2 font-semibold text-[#456278]">
+                      <MapPin size={14} />
+                      {job.distance_km == null ? "Jarak belum tersedia" : `${formatDistance(job.distance_km)} km dari lokasimu`}
+                    </p>
+                  )}
                   <p className="flex items-center gap-2"><Wallet size={14} />{salaryLabel(job)}</p>
                   <p className="flex items-center gap-2"><BriefcaseBusiness size={14} />{job.employment_type}</p>
                   <p className="flex items-center gap-2">

@@ -142,7 +142,9 @@ function tokens(value: string): string[] {
 }
 
 function normalizePlace(value: unknown): string {
-  return normalize(value).replace(/^(kota|kabupaten administrasi|kabupaten|kab)\s+/, "");
+  return normalize(value)
+    .replace(/^(desa\/kelurahan|kelurahan|desa)\s+/, "")
+    .replace(/^(kota|kabupaten administrasi|kabupaten|kab)\s+/, "");
 }
 
 function containsPhrase(haystack: string, phrase: string): boolean {
@@ -420,28 +422,46 @@ function positionAttribute(applicant: CareerMatchApplicant, job: CareerMatchJob)
 
 function locationAttribute(applicant: CareerMatchApplicant, job: CareerMatchJob): CareerMatchAttribute {
   const profile = applicant.profile;
-  const applicantCity = normalizePlace(profile?.city);
+  const applicantVillage = normalizePlace(profile?.village);
   const applicantDistrict = normalizePlace(profile?.district);
+  const applicantCity = normalizePlace(profile?.city);
   const applicantProvince = normalizePlace(profile?.province);
-  if (!applicantCity && !applicantProvince) {
+
+  if (!applicantVillage && !applicantDistrict && !applicantCity && !applicantProvince) {
     return makeAttribute("location", "Domisili", WEIGHTS.location, null, "Domisili belum dicantumkan pada profil.");
   }
 
-  const jobCity = normalizePlace(job.city);
+  const jobVillage = normalizePlace(job.village);
   const jobDistrict = normalizePlace(job.district);
+  const jobCity = normalizePlace(job.city);
   const jobProvince = normalizePlace(job.province);
 
-  let score = 20;
-  let detail = "Lokasi lowongan berbeda wilayah dari domisili profil.";
-  if (applicantCity && jobCity && applicantCity === jobCity) {
-    score = applicantDistrict && jobDistrict && applicantDistrict === jobDistrict ? 100 : 90;
-    detail = score === 100 ? "Domisili kecamatan sama dengan lokasi lowongan." : "Kota/kabupaten sama dengan lokasi lowongan.";
+  let score = 15;
+  let detail = "Lokasi lowongan berada di luar wilayah domisili yang tercantum pada profil.";
+
+  if (applicantVillage && jobVillage && applicantVillage === jobVillage && applicantDistrict === jobDistrict && applicantCity === jobCity) {
+    score = 100;
+    detail = "Desa/kelurahan, kecamatan, dan kota/kabupaten sama dengan domisili profil.";
+  } else if (applicantDistrict && jobDistrict && applicantDistrict === jobDistrict && applicantCity === jobCity) {
+    score = 95;
+    detail = "Kecamatan dan kota/kabupaten sama dengan domisili profil.";
+  } else if (applicantCity && jobCity && applicantCity === jobCity) {
+    score = 85;
+    detail = "Kota/kabupaten sama dengan domisili profil.";
   } else if (applicantProvince && jobProvince && applicantProvince === jobProvince) {
-    score = 70;
-    detail = "Provinsi sama, tetapi kota/kabupaten berbeda.";
+    score = 65;
+    detail = "Provinsi sama, tetapi kabupaten/kota berbeda.";
   }
 
-  return makeAttribute("location", "Domisili", WEIGHTS.location, score, detail, score >= 70 ? ["Wilayah kerja"] : [], score < 70 ? ["Kedekatan lokasi"] : []);
+  return makeAttribute(
+    "location",
+    "Domisili",
+    WEIGHTS.location,
+    score,
+    detail,
+    score >= 65 ? ["Wilayah kerja"] : [],
+    score < 65 ? ["Kedekatan lokasi"] : [],
+  );
 }
 
 function employmentTypeAttribute(applicant: CareerMatchApplicant, job: CareerMatchJob): CareerMatchAttribute {
