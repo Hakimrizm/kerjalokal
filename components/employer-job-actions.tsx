@@ -9,14 +9,14 @@ export function EmployerJobActions({ jobId, status }: { jobId: string; status: s
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  if (!["published", "closed", "rejected"].includes(status)) return null;
+  if (!["published", "closed"].includes(status)) return null;
 
   async function updateStatus() {
-    const nextStatus = status === "published" ? "closed" : "pending_review";
+    const nextStatus = status === "published" ? "closed" : "published";
     const confirmed = window.confirm(
       status === "published"
         ? "Tutup lowongan ini? Pencari kerja tidak dapat mengirim lamaran baru."
-        : "Kirim ulang lowongan ini untuk ditinjau admin?",
+        : "Tayangkan kembali lowongan ini? Lowongan akan langsung terlihat oleh pencari kerja.",
     );
     if (!confirmed) return;
     setLoading(true);
@@ -26,7 +26,10 @@ export function EmployerJobActions({ jobId, status }: { jobId: string; status: s
       setLoading(false);
       return;
     }
-    const { error } = await supabase.from("jobs").update({ status: nextStatus, updated_at: new Date().toISOString() }).eq("id", jobId).eq("employer_id", user.id);
+    const { error } = await supabase.rpc("employer_set_job_status", {
+      target_job_id: jobId,
+      next_status: nextStatus,
+    });
     setLoading(false);
     if (!error) router.refresh();
   }
@@ -34,7 +37,7 @@ export function EmployerJobActions({ jobId, status }: { jobId: string; status: s
   return (
     <button type="button" onClick={() => void updateStatus()} disabled={loading} className="btn btn-ghost btn-sm rounded-lg text-xs text-[#53616D]">
       {loading ? <LoaderCircle size={14} className="animate-spin"/> : status === "published" ? <PauseCircle size={14}/> : <RotateCcw size={14}/>}
-      {status === "published" ? "Tutup" : "Kirim ulang"}
+      {status === "published" ? "Tutup" : "Tayangkan kembali"}
     </button>
   );
 }

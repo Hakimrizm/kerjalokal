@@ -19,10 +19,11 @@ export const instant = false;
 
 const statusLabel: Record<string, string> = {
   draft: "Draft",
-  pending_review: "Menunggu review",
+  pending_review: "Perlu pemeriksaan",
   published: "Tayang",
   rejected: "Perlu perbaikan",
   closed: "Ditutup",
+  banned: "Diblokir karena fraud",
 };
 
 function statusClass(status: string) {
@@ -30,6 +31,7 @@ function statusClass(status: string) {
   if (status === "rejected") return "badge-error";
   if (status === "pending_review") return "badge-warning";
   if (status === "closed") return "badge-ghost";
+  if (status === "banned") return "badge-error";
   return "badge-outline";
 }
 
@@ -49,8 +51,8 @@ export default async function EmployerDashboardPage() {
   const [{ data: profile }, { data: contact }, { data: jobs }, { data: notifications }] = await Promise.all([
     supabase.from("employer_profiles").select("*").eq("user_id", user.id).maybeSingle(),
     supabase.from("employer_contacts").select("*").eq("user_id", user.id).maybeSingle(),
-    supabase.from("jobs").select("id,title,status,employment_type,created_at,application_deadline,city,district").eq("employer_id", user.id).order("created_at", { ascending: false }),
-    supabase.from("user_notifications").select("id,title,message,notification_type,read_at,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
+    supabase.from("jobs").select("id,title,status,fraud_review_status,ban_reason,employment_type,created_at,application_deadline,city,district").eq("employer_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("user_notifications").select("id,title,message,notification_type,read_at,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
   ]);
 
   if (!profile?.profile_completed) redirect("/onboarding/employer");
@@ -63,7 +65,7 @@ export default async function EmployerDashboardPage() {
 
   const totalApplications = applications?.length ?? 0;
   const activeJobs = jobRows.filter((job) => job.status === "published").length;
-  const pendingJobs = jobRows.filter((job) => job.status === "pending_review").length;
+  const flaggedJobs = jobRows.filter((job) => job.fraud_review_status === "pending_review" && job.status !== "banned").length;
   const counts = new Map<string, number>();
   for (const application of applications ?? []) counts.set(application.job_id, (counts.get(application.job_id) ?? 0) + 1);
 
@@ -144,8 +146,8 @@ export default async function EmployerDashboardPage() {
                 <div className="divide-y divide-[#EEF1F2]">
                   {notifications.map((notification) => (
                     <div key={notification.id} className="flex items-start gap-3 px-5 py-3.5">
-                      <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${notification.notification_type === "employer_verification" ? "bg-[#ECF0F1] text-[#34495E]" : "bg-[#F3F5F6] text-[#7F8C8D]"}`}><ShieldAlert size={15}/></span>
-                      <div className="min-w-0 flex-1"><p className="text-xs font-extrabold text-[#34495E]">{notification.title}</p><p className="mt-1 text-[11px] leading-5 text-[#7F8C8D]">{notification.message}</p><p className="mt-1 text-[9px] text-[#A0AAB0]">{formatDate(notification.created_at)}</p></div>
+                      <span className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg ${notification.notification_type === "job_banned" ? "bg-[#FCEEEE] text-[#A34E4E]" : notification.notification_type === "employer_verification" ? "bg-[#ECF0F1] text-[#34495E]" : notification.notification_type === "job_fraud_cleared" ? "bg-[#EAF5ED] text-[#347052]" : "bg-[#F3F5F6] text-[#7F8C8D]"}`}><ShieldAlert size={15}/></span>
+                      <div className="min-w-0 flex-1"><p className="text-xs font-extrabold text-[#34495E]">{notification.title}</p><p className={`mt-1 text-[11px] leading-5 ${notification.notification_type === "job_banned" ? "font-semibold text-[#934444]" : "text-[#7F8C8D]"}`}>{notification.message}</p><p className="mt-1 text-[9px] text-[#A0AAB0]">{formatDate(notification.created_at)}</p></div>
                       {!notification.read_at && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-[#34495E]" title="Belum dibaca"/>}
                     </div>
                   ))}
@@ -168,7 +170,7 @@ export default async function EmployerDashboardPage() {
             {profile.verification_status === "verified" && (
               <section className="mt-6 flex items-start gap-3 rounded-2xl border border-[#D6E8DC] bg-[#F1F8F3] p-4">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#DDEFE3] text-[#347052]"><CheckCircle2 size={17}/></span>
-                <div><h2 className="text-xs font-extrabold text-[#347052]">Usaha sudah terverifikasi</h2><p className="mt-1 text-[11px] leading-5 text-[#5E866E]">Kamu sudah dapat membuat lowongan dan mengirimkannya untuk moderasi sebelum tayang.</p></div>
+                <div><h2 className="text-xs font-extrabold text-[#347052]">Usaha sudah terverifikasi</h2><p className="mt-1 text-[11px] leading-5 text-[#5E866E]">Kamu sudah dapat membuat lowongan. Setiap lowongan langsung tayang dan tetap dipantau oleh pemeriksaan keamanan otomatis.</p></div>
               </section>
             )}
 
@@ -176,7 +178,7 @@ export default async function EmployerDashboardPage() {
               {[
                 { label: "Total lowongan", value: jobRows.length, icon: BriefcaseBusiness, note: "Semua lowongan usaha" },
                 { label: "Lowongan tayang", value: activeJobs, icon: CheckCircle2, note: "Dapat menerima lamaran" },
-                { label: "Menunggu review", value: pendingJobs, icon: Clock3, note: "Menunggu keputusan Super Admin" },
+                { label: "Perlu pemeriksaan", value: flaggedJobs, icon: ShieldAlert, note: "Ditandai sistem untuk ditinjau" },
                 { label: "Total pelamar", value: totalApplications, icon: Users, note: "Dari seluruh lowongan" },
               ].map((item) => { const Icon = item.icon; return <article key={item.label} className="rounded-2xl border border-[#E2E7E9] bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><span className="text-xs font-semibold text-[#7F8C8D]">{item.label}</span><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><Icon size={17} /></span></div><p className="mt-3 text-2xl font-extrabold text-[#2C3E50]">{item.value}</p><p className="mt-1 text-[11px] text-[#8A969D]">{item.note}</p></article>; })}
             </section>
@@ -186,7 +188,7 @@ export default async function EmployerDashboardPage() {
                 <div><h2 className="text-base font-extrabold text-[#2C3E50]">Lowongan terbaru</h2><p className="mt-1 text-xs text-[#8A969D]">Setiap lowongan memiliki daftar pelamar masing-masing.</p></div>
                 <Link href="/dashboard/pelaku-usaha/lowongan" className="inline-flex items-center gap-1 text-xs font-extrabold text-[#34495E] hover:underline">Semua lowongan <ArrowRight size={14} /></Link>
               </div>
-              {jobRows.length ? <div className="divide-y divide-[#EEF1F2]">{jobRows.slice(0, 5).map((job) => <div key={job.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-extrabold text-[#34495E]">{job.title}</h3><span className={`badge ${statusClass(job.status)} badge-sm`}>{statusLabel[job.status] ?? job.status}</span></div><p className="mt-1 text-[11px] text-[#8A969D]">{job.employment_type} · {job.district}, {job.city} · Dibuat {formatDate(job.created_at)}</p><p className="mt-1 text-[11px] font-semibold text-[#53616D]">{counts.get(job.id) ?? 0} pelamar terdaftar</p></div><div className="flex shrink-0 flex-wrap gap-2"><Link href={`/dashboard/pelaku-usaha/lowongan/${job.id}/pelamar`} className="btn btn-outline btn-sm rounded-lg border-[#BDC3C7] text-xs text-[#34495E]">Lihat Pelamar</Link><Link href={`/dashboard/pelaku-usaha/lowongan/${job.id}/edit`} className="btn btn-ghost btn-sm rounded-lg text-xs text-[#53616D]">Kelola</Link></div></div>)}</div> : <div className="px-6 py-12 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#ECF0F1] text-[#53616D]"><BriefcaseBusiness size={24} /></span><h3 className="mt-4 text-sm font-extrabold text-[#34495E]">Belum ada lowongan</h3><p className="mt-1 text-xs text-[#8A969D]">Buat lowongan pertama untuk mulai menjangkau kandidat lokal.</p><Link href="/dashboard/pelaku-usaha/lowongan/baru" className="btn btn-primary btn-sm mt-4 rounded-full border-0 bg-[#2C3E50] px-5 text-white">Buat Lowongan <ArrowRight size={14} /></Link></div>}
+              {jobRows.length ? <div className="divide-y divide-[#EEF1F2]">{jobRows.slice(0, 5).map((job) => <div key={job.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-extrabold text-[#34495E]">{job.title}</h3><span className={`badge ${statusClass(job.status)} badge-sm`}>{statusLabel[job.status] ?? job.status}</span></div><p className="mt-1 text-[11px] text-[#8A969D]">{job.employment_type} · {job.district}, {job.city} · Dibuat {formatDate(job.created_at)}</p><p className="mt-1 text-[11px] font-semibold text-[#53616D]">{counts.get(job.id) ?? 0} pelamar terdaftar</p>{job.status === "banned" && <p className="mt-1 text-[11px] leading-5 text-[#A34E4E]">Diblokir: {job.ban_reason || "Lowongan terindikasi penipuan."}</p>}{job.fraud_review_status === "pending_review" && job.status !== "banned" && <p className="mt-1 text-[11px] leading-5 text-[#9A742D]">Sedang diperiksa oleh tim KerjaLokal.</p>}</div><div className="flex shrink-0 flex-wrap gap-2"><Link href={`/dashboard/pelaku-usaha/lowongan/${job.id}/pelamar`} className="btn btn-outline btn-sm rounded-lg border-[#BDC3C7] text-xs text-[#34495E]">Lihat Pelamar</Link>{job.status !== "banned" && <Link href={`/dashboard/pelaku-usaha/lowongan/${job.id}/edit`} className="btn btn-ghost btn-sm rounded-lg text-xs text-[#53616D]">Kelola</Link>}</div></div>)}</div> : <div className="px-6 py-12 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#ECF0F1] text-[#53616D]"><BriefcaseBusiness size={24} /></span><h3 className="mt-4 text-sm font-extrabold text-[#34495E]">Belum ada lowongan</h3><p className="mt-1 text-xs text-[#8A969D]">Buat lowongan pertama untuk mulai menjangkau kandidat lokal.</p><Link href="/dashboard/pelaku-usaha/lowongan/baru" className="btn btn-primary btn-sm mt-4 rounded-full border-0 bg-[#2C3E50] px-5 text-white">Buat Lowongan <ArrowRight size={14} /></Link></div>}
             </section>
             <footer className="mt-9 flex flex-col items-center justify-between gap-2 border-t border-[#DCE2E5] py-5 text-[10px] text-[#9AA5AB] sm:flex-row"><span>© {new Date().getFullYear()} KerjaLokal</span><span>Kelola rekrutmen usaha dengan lebih terstruktur.</span></footer>
           </div>

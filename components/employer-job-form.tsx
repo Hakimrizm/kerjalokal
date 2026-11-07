@@ -79,14 +79,14 @@ export function EmployerJobForm({
     village: initialJob?.village ?? defaultLocation?.village ?? "",
     address: initialJob?.address ?? defaultLocation?.address ?? "",
   });
-  const [saving, setSaving] = useState<"draft" | "review" | null>(null);
+  const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function saveJob(mode: "draft" | "review") {
+  async function saveJob(mode: "draft" | "publish") {
     setError(null);
     if (form.title.trim().length < 3) return setError("Judul lowongan minimal 3 karakter.");
     if (!form.category) return setError("Pilih kategori pekerjaan.");
@@ -104,8 +104,9 @@ export function EmployerJobForm({
       const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
       if (role?.role !== "employer") throw new Error("Hanya akun pelaku usaha yang dapat mengelola lowongan.");
 
+      // Payload bersama untuk INSERT dan UPDATE.
+      // employer_id hanya dikirim saat INSERT karena tidak boleh diubah pemilik.
       const payload = {
-        employer_id: employerId,
         title: form.title.trim(),
         category: form.category,
         employment_type: form.employment_type,
@@ -124,15 +125,39 @@ export function EmployerJobForm({
         district: form.district.trim(),
         village: form.village.trim() || null,
         address: form.address.trim() || null,
-        status: mode === "review" ? "pending_review" : "draft",
         updated_at: new Date().toISOString(),
       };
 
-      const result = initialJob?.id
-        ? await supabase.from("jobs").update(payload).eq("id", initialJob.id).eq("employer_id", employerId)
-        : await supabase.from("jobs").insert(payload);
+      if (initialJob?.id) {
+        // UPDATE hanya mengubah kolom yang memang diberikan hak oleh RLS.
+        const { error: updateError } = await supabase
+          .from("jobs")
+          .update(payload)
+          .eq("id", initialJob.id)
+          .eq("employer_id", employerId);
 
-      if (result.error) throw result.error;
+        if (updateError) throw updateError;
+
+        // Perubahan status dilakukan melalui RPC karena kolom status dilindungi.
+        if (mode === "publish" && initialJob.status !== "published") {
+          const { error: publishError } = await supabase.rpc("employer_set_job_status", {
+            target_job_id: initialJob.id,
+            next_status: "published",
+          });
+
+          if (publishError) throw publishError;
+        }
+      } else {
+        // Lowongan baru langsung tayang saat memilih Terbitkan.
+        const { error: insertError } = await supabase.from("jobs").insert({
+          ...payload,
+          employer_id: employerId,
+          status: mode === "publish" ? "published" : "draft",
+        });
+
+        if (insertError) throw insertError;
+      }
+
       router.replace("/dashboard/pelaku-usaha/lowongan?saved=1");
       router.refresh();
     } catch (caught: unknown) {
@@ -145,7 +170,7 @@ export function EmployerJobForm({
   return (
     <div className="rounded-2xl border border-[#E2E7E9] bg-white shadow-sm">
       <div className="border-b border-[#EEF1F2] px-5 py-5 sm:px-7">
-        <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><FileText size={20} /></span><div><h1 className="text-lg font-extrabold text-[#2C3E50]">{initialJob ? "Edit lowongan" : "Buat lowongan baru"}</h1><p className="mt-1 text-xs text-[#8A969D]">Isi informasi yang jelas agar kandidat memahami pekerjaan yang ditawarkan.</p></div></div>
+        <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><FileText size={20} /></span><div><h1 className="text-lg font-extrabold text-[#2C3E50]">{initialJob ? "Edit lowongan" : "Buat lowongan baru"}</h1><p className="mt-1 text-xs text-[#8A969D]">Lowongan langsung tayang setelah diterbitkan. Sistem tetap memeriksa indikator risiko secara otomatis.</p></div></div>
       </div>
 
       <div className="space-y-7 p-5 sm:p-7">
@@ -197,8 +222,8 @@ export function EmployerJobForm({
         <div className="flex flex-col-reverse justify-between gap-3 border-t border-[#EEF1F2] pt-5 sm:flex-row">
           <button type="button" onClick={() => router.back()} className="btn btn-ghost min-h-12 rounded-xl text-sm font-bold text-[#53616D]"><ArrowLeft size={16} /> Kembali</button>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <button type="button" disabled={saving !== null} onClick={() => void saveJob("draft")} className="btn btn-outline min-h-12 rounded-xl border-[#BDC3C7] text-sm font-bold text-[#34495E]">{saving === "draft" ? <LoaderCircle size={16} className="animate-spin" /> : <Save size={16} />} Simpan Draft</button>
-            <button type="button" disabled={saving !== null} onClick={() => void saveJob("review")} className="btn btn-primary min-h-12 rounded-xl border-0 bg-[#2C3E50] px-5 text-sm font-bold text-white hover:bg-[#34495E]">{saving === "review" ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />} Kirim untuk Ditinjau <ArrowRight size={15} /></button>
+            <button type="button" disabled={saving !== null} onClick={() => void saveJob("draft")} className="btn btn-outline min-h-12 rounded-xl border-[#BDC3C7] text-sm font-bold text-[#34495E]">{saving === "draft" ? <LoaderCircle size={16} className="animate-spin" /> : <Save size={16} />} {initialJob ? "Simpan Perubahan" : "Simpan Draft"}</button>
+            <button type="button" disabled={saving !== null} onClick={() => void saveJob("publish")} className="btn btn-primary min-h-12 rounded-xl border-0 bg-[#2C3E50] px-5 text-sm font-bold text-white hover:bg-[#34495E]">{saving === "publish" ? <LoaderCircle size={16} className="animate-spin" /> : <Send size={16} />} {initialJob ? "Simpan & Tayangkan" : "Terbitkan Lowongan"} <ArrowRight size={15} /></button>
           </div>
         </div>
       </div>

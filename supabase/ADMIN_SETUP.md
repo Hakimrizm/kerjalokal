@@ -6,6 +6,7 @@ Jalankan melalui Supabase Dashboard → SQL Editor. Jalankan setiap file secara 
 
 1. `202611070004_add_admin_role.sql`
 2. `202611070005_admin_superadmin_portal.sql`
+3. `202611070006_fraudguard_instant_publish.sql`
 
 Migrasi `0001`, `0002`, dan `0003` merupakan prasyarat dari project KerjaLokal sebelumnya dan tidak perlu dijalankan ulang jika sudah berhasil.
 
@@ -52,6 +53,19 @@ Super Admin kemudian dapat membuka menu **Kelola Admin** untuk membuat akun Admi
 - `job_seeker`: pencari kerja.
 - `employer`: pelaku usaha.
 - `admin`: memeriksa data usaha dan mengirim rekomendasi; tidak dapat memutuskan verifikasi final, mengelola laporan fraud, atau melihat audit log.
-- `super_admin`: keputusan final verifikasi usaha, moderasi lowongan, penanganan laporan fraud, pengelolaan akun Admin, dan audit aktivitas.
+- `super_admin`: keputusan final verifikasi usaha, pemeriksaan antrean FraudGuard, pemblokiran lowongan fraud, penanganan laporan, pengelolaan akun Admin, dan audit aktivitas.
 
 Akun lama dengan role `fraud_admin` akan dikonversi menjadi `super_admin` oleh migrasi 0005. Nilai enum lama tetap ada agar migrasi tidak merusak tipe data, tetapi role tersebut tidak lagi dipakai untuk akun baru.
+
+
+## Alur publikasi lowongan dan FraudGuard
+
+Setelah migration `202611070006_fraudguard_instant_publish.sql` dijalankan:
+
+1. Pelaku usaha yang sudah terverifikasi dapat menerbitkan lowongan secara langsung.
+2. Trigger database memeriksa teks lowongan berdasarkan indikator risiko seperti permintaan biaya/deposit, instruksi transfer, janji diterima tanpa wawancara, pola investasi/MLM, dan tawaran penghasilan tidak wajar.
+3. Lowongan yang mencapai ambang risiko masuk ke menu **FraudGuard & Laporan**. Lowongan tetap tayang selama menunggu pemeriksaan manual.
+4. Super Admin dapat menandai lowongan aman atau memblokirnya sebagai fraud.
+5. Pemblokiran mengubah status menjadi `banned`, menyembunyikan lowongan dari publik, mencegah lamaran baru, mengirim notifikasi kepada pelaku usaha, dan mencatat tindakan pada audit log. Data lowongan dan lamaran yang sudah ada tidak dihapus.
+
+Pemeriksaan otomatis pada versi ini merupakan **rule-based screening** (penapisan berbasis aturan), bukan model AI eksternal. Skor dan indikator hanya membantu menentukan prioritas pemeriksaan; keputusan fraud tetap dibuat oleh Super Admin berdasarkan bukti.

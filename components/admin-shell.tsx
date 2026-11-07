@@ -32,7 +32,7 @@ export function AdminShell({
   const items: NavItem[] = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/verifikasi-usaha", label: "Verifikasi Usaha", icon: Building2 },
-    { href: "/admin/lowongan", label: "Moderasi Lowongan", icon: BriefcaseBusiness },
+    { href: "/admin/lowongan", label: "Data Lowongan", icon: BriefcaseBusiness },
     { href: "/admin/fraud", label: "FraudGuard & Laporan", icon: FileWarning, superOnly: true },
     { href: "/admin/kelola-admin", label: "Kelola Admin", icon: Users, superOnly: true },
     { href: "/admin/audit", label: "Audit Aktivitas", icon: Activity, superOnly: true },

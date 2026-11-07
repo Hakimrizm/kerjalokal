@@ -19,14 +19,16 @@ export default async function AdminDashboardPage() {
     pendingEmployersResult,
     verifiedEmployersResult,
     rejectedEmployersResult,
-    pendingJobsResult,
+    publishedJobsResult,
+    flaggedJobsResult,
     recentEmployersResult,
     reportsResult,
   ] = await Promise.all([
     supabase.from("employer_profiles").select("user_id", { count: "exact", head: true }).eq("profile_completed", true).eq("verification_status", "pending"),
     supabase.from("employer_profiles").select("user_id", { count: "exact", head: true }).eq("verification_status", "verified"),
     supabase.from("employer_profiles").select("user_id", { count: "exact", head: true }).eq("verification_status", "rejected"),
-    supabase.from("jobs").select("id", { count: "exact", head: true }).eq("status", "pending_review"),
+    supabase.from("jobs").select("id", { count: "exact", head: true }).eq("status", "published"),
+    supabase.from("jobs").select("id", { count: "exact", head: true }).eq("fraud_review_status", "pending_review").neq("status", "banned"),
     supabase.from("employer_profiles").select("user_id,business_name,business_type,city,district,verification_status,review_recommendation,created_at").order("created_at", { ascending: false }).limit(6),
     isSuper ? supabase.from("fraud_reports").select("id", { count: "exact", head: true }).in("status", ["open", "investigating"]) : Promise.resolve({ count: 0, error: null }),
   ]);
@@ -34,8 +36,11 @@ export default async function AdminDashboardPage() {
   const cards = [
     { label: "Menunggu verifikasi usaha", value: pendingEmployersResult.count ?? 0, icon: Clock3, color: "text-amber-700", bg: "bg-amber-50", href: "/admin/verifikasi-usaha?status=pending" },
     { label: "Usaha terverifikasi", value: verifiedEmployersResult.count ?? 0, icon: BadgeCheck, color: "text-emerald-700", bg: "bg-emerald-50", href: "/admin/verifikasi-usaha?status=verified" },
-    { label: "Lowongan menunggu review", value: pendingJobsResult.count ?? 0, icon: BriefcaseBusiness, color: "text-blue-700", bg: "bg-blue-50", href: "/admin/lowongan" },
-    ...(isSuper ? [{ label: "Laporan fraud aktif", value: reportsResult.count ?? 0, icon: FileWarning, color: "text-rose-700", bg: "bg-rose-50", href: "/admin/fraud" }] : []),
+    { label: "Lowongan tayang", value: publishedJobsResult.count ?? 0, icon: BriefcaseBusiness, color: "text-blue-700", bg: "bg-blue-50", href: "/admin/lowongan" },
+    ...(isSuper ? [
+      { label: "Lowongan mencurigakan", value: flaggedJobsResult.count ?? 0, icon: BriefcaseBusiness, color: "text-amber-700", bg: "bg-amber-50", href: "/admin/fraud" },
+      { label: "Laporan fraud aktif", value: reportsResult.count ?? 0, icon: FileWarning, color: "text-rose-700", bg: "bg-rose-50", href: "/admin/fraud" },
+    ] : []),
   ];
 
   return (
@@ -50,7 +55,7 @@ export default async function AdminDashboardPage() {
             <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">Selamat datang di Control Center.</h1>
             <p className="mt-2 max-w-xl text-sm leading-6 text-white/65">
               {isSuper
-                ? "Pantau operasional KerjaLokal, ambil keputusan verifikasi akhir, kelola laporan fraud, dan awasi aktivitas administrator."
+                ? "Pantau operasional KerjaLokal, ambil keputusan verifikasi akhir, periksa antrean FraudGuard, dan awasi aktivitas administrator."
                 : "Periksa kelengkapan dan keberadaan usaha. Kirim rekomendasi pemeriksaan agar Super Admin dapat mengambil keputusan akhir."}
             </p>
           </div>
@@ -61,7 +66,7 @@ export default async function AdminDashboardPage() {
         </div>
       </section>
 
-      <section className={`grid gap-3 ${cards.length === 4 ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-3"}`}>
+      <section className={`grid gap-3 ${cards.length >= 4 ? "sm:grid-cols-2 xl:grid-cols-4" : "sm:grid-cols-3"}`}>
         {cards.map((item) => { const Icon = item.icon; return (
           <Link key={item.label} href={item.href} className="group rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <div className="flex items-start justify-between gap-3"><p className="text-xs font-semibold text-[#7F8C8D]">{item.label}</p><span className={`grid h-10 w-10 place-items-center rounded-xl ${item.bg} ${item.color}`}><Icon size={19}/></span></div>
