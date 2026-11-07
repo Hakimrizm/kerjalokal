@@ -6,12 +6,9 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowRight,
-  ArrowUpRight,
-  Award,
   BriefcaseBusiness,
   ChevronRight,
   FileUser,
-  GraduationCap,
   LayoutDashboard,
   LoaderCircle,
   LogOut,

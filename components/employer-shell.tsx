@@ -5,19 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
-  ArrowRight,
   ArrowUpRight,
   BriefcaseBusiness,
   Building2,
-  CheckCircle2,
   ChevronRight,
-  FilePlus2,
   LoaderCircle,
   LogOut,
-  MapPin,
   Menu,
   ShieldAlert,
-  Users,
   X,
 } from "lucide-react";
 

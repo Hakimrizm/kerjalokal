@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { JobSeekerSummaryEditor } from "@/components/job-seeker-summary-editor";
 import {
   ArrowLeft,
   ArrowRight,
@@ -154,9 +155,7 @@ export default async function JobSeekerProfilePage() {
                 <Pencil size={15} /> Edit Profil
               </Link>
             </div>
-            {jobProfile?.summary && (
-              <p className="mt-6 max-w-3xl text-sm leading-7 text-[#667681]">{jobProfile.summary}</p>
-            )}
+            <JobSeekerSummaryEditor initialSummary={jobProfile?.summary ?? ""} />
           </div>
         </section>
 
@@ -221,6 +220,10 @@ export default async function JobSeekerProfilePage() {
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">Ketersediaan</p>
                     <p className="mt-1.5 text-sm font-semibold text-[#53616D]">{jobProfile?.availability || "Belum diatur"}</p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">Tentang Saya (Ringkasan)</p>
+                    <p className="mt-1.5 text-xs leading-6 text-[#53616D]">{jobProfile?.summary || "Belum ada ringkasan profil."}</p>
                   </div>
                 </div>
                 <div className="mt-5 border-t border-[#EEF1F2] pt-4">

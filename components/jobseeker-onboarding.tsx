@@ -44,6 +44,7 @@ type IdentityForm = {
 	postal_code: string;
 	latitude: string;
 	longitude: string;
+	summary: string;
 };
 
 type PreferenceForm = {
@@ -172,6 +173,7 @@ const emptyIdentity = (name: string): IdentityForm => ({
 	postal_code: "",
 	latitude: "",
 	longitude: "",
+	summary: "",
 });
 
 const emptyPreferences = (): PreferenceForm => ({
@@ -387,6 +389,7 @@ export function JobSeekerOnboarding({
 					postal_code: savedProfile.postal_code ?? "",
 					latitude: savedProfile.latitude?.toString() ?? "",
 					longitude: savedProfile.longitude?.toString() ?? "",
+					summary: preferenceResult.data?.summary ?? "",
 				});
 				setPhotoPath(savedProfile.photo_path ?? null);
 
@@ -415,6 +418,10 @@ export function JobSeekerOnboarding({
 					linkedin_url: savedPreferences.linkedin_url ?? "",
 					languages: (savedPreferences.languages ?? []).join(", "),
 				});
+				setIdentity((curr) => ({
+					...curr,
+					summary: savedPreferences.summary ?? "",
+				}));
 				setCurrentStep(
 					isEditing
 						? Math.max(0, Math.min(4, initialStep))
@@ -865,7 +872,11 @@ export function JobSeekerOnboarding({
 			const { error: progressError } = await supabase
 				.from("job_seeker_profiles")
 				.upsert(
-					{ user_id: userId, onboarding_step: 2 },
+					{
+						user_id: userId,
+						summary: identity.summary.trim() || null,
+						onboarding_step: 2,
+					},
 					{ onConflict: "user_id" },
 				);
 			if (progressError) throw progressError;
@@ -1646,6 +1657,26 @@ export function JobSeekerOnboarding({
 												</button>
 											</div>
 										</div>
+
+										<Field
+											label="Ringkasan singkat tentang dirimu (Summary)"
+											htmlFor="identity-summary"
+											hint="Tulis 2–4 kalimat tentang kemampuan, minat, atau pengalaman kerjamu. Ini akan tampil di bagian atas profil dan CV."
+										>
+											<textarea
+												id="identity-summary"
+												className={textareaClass}
+												maxLength={600}
+												rows={4}
+												value={identity.summary}
+												onChange={(event) => {
+													const val = event.target.value;
+													updateIdentity("summary", val);
+													updatePreferences("summary", val);
+												}}
+												placeholder="Contoh: Barista dan staf F&B berpengalaman 2 tahun yang terbiasa mengoperasikan mesin espresso, kasir POS, dan melayani pelanggan dengan ramah..."
+											/>
+										</Field>
 									</div>
 								)}
 
