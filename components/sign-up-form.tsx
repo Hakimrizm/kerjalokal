@@ -277,6 +277,12 @@ export function SignUpForm() {
           Masuk di sini
         </Link>
       </p>
+      <p className="mt-4 text-center text-xs text-[#7F8C8D]">
+        Mewakili usaha dan ingin merekrut?{" "}
+        <Link href="/auth/sign-up/employer" className="font-extrabold text-[#34495E] underline underline-offset-4">
+          Daftar sebagai pelaku usaha
+        </Link>
+      </p>
     </div>
   );
 }

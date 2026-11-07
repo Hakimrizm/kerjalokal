@@ -737,6 +737,11 @@ export function LandingPage() {
 							</button>
 						</div>
 					)}
+					<div className="mt-8 flex justify-center">
+						<Link href="/lowongan" className="btn btn-outline btn-primary rounded-full border-primary px-6 text-xs font-bold hover:bg-primary hover:text-white">
+							Lihat lowongan aktif <ArrowRight size={15} />
+						</Link>
+					</div>
 				</div>
 			</section>
 
@@ -822,7 +827,7 @@ export function LandingPage() {
 							</div>
 							<div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
 								<Link
-									href="/auth/sign-up"
+									href="/auth/sign-up/employer"
 									className="btn h-12 rounded-full border-0 bg-[#ECF0F1] px-7 font-bold text-primary hover:bg-white"
 								>
 									Daftar sebagai pelaku usaha <ArrowUpRight size={16} />
@@ -909,7 +914,7 @@ export function LandingPage() {
 								</li>
 								<li>
 									<Link
-										href="/auth/sign-up"
+										href="/auth/sign-up/employer"
 										className="transition hover:text-white"
 									>
 										Daftar pelaku usaha

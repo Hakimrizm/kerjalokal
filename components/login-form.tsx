@@ -16,10 +16,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+type LoginFormProps = React.ComponentPropsWithoutRef<"div"> & {
+  nextPath?: string;
+};
+
 export function LoginForm({
   className,
+  nextPath,
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,16 +50,35 @@ export function LoginForm({
         .eq("user_id", data.user.id)
         .maybeSingle();
 
-      if (!roleData || roleData.role === "job_seeker") {
+      if (roleData?.role === "employer") {
+        const { data: employerProfile } = await supabase
+          .from("employer_profiles")
+          .select("profile_completed")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        router.replace(
+          employerProfile?.profile_completed
+            ? "/dashboard/pelaku-usaha"
+            : "/onboarding/employer",
+        );
+      } else if (!roleData || roleData.role === "job_seeker") {
         const { data: jobProfile } = await supabase
           .from("job_seeker_profiles")
           .select("profile_completed")
           .eq("user_id", data.user.id)
           .maybeSingle();
 
-        router.replace(jobProfile?.profile_completed ? "/dashboard/pencari-kerja" : "/onboarding/job-seeker");
+        const safeNextPath =
+          nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+            ? nextPath
+            : undefined;
+        router.replace(
+          jobProfile?.profile_completed
+            ? safeNextPath ?? "/dashboard/pencari-kerja"
+            : "/onboarding/job-seeker",
+        );
       } else {
-        // Role lain akan diarahkan ke area terlindungi sampai dashboard masing-masing tersedia.
         router.replace("/protected");
       }
       router.refresh();
@@ -115,7 +139,11 @@ export function LoginForm({
             <div className="mt-5 text-center text-sm text-[#53616D]">
               Belum punya akun?{" "}
               <Link href="/auth/sign-up" className="font-bold text-[#2C3E50] underline underline-offset-4">
-                Daftar sebagai pencari kerja
+                Pencari kerja
+              </Link>
+              {" · "}
+              <Link href="/auth/sign-up/employer" className="font-bold text-[#2C3E50] underline underline-offset-4">
+                Pelaku usaha
               </Link>
             </div>
           </form>

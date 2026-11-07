@@ -207,7 +207,15 @@ export default async function JobSeekerDashboardPage() {
               <ChevronRight size={15} className="ml-auto text-[#AAB4BA]" />
             </Link>
             <Link
-              href="/#lowongan"
+              href="/dashboard/pencari-kerja/lamaran"
+              className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
+            >
+              <BriefcaseBusiness size={18} />
+              Lamaran Saya
+              <ChevronRight size={15} className="ml-auto text-[#AAB4BA]" />
+            </Link>
+            <Link
+              href="/lowongan"
               className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
             >
               <Search size={18} />
@@ -286,7 +294,10 @@ export default async function JobSeekerDashboardPage() {
               <Link href="/dashboard/pencari-kerja/profil" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
                 Profil Saya
               </Link>
-              <Link href="/#lowongan" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
+              <Link href="/dashboard/pencari-kerja/lamaran" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
+                Lamaran Saya
+              </Link>
+              <Link href="/lowongan" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
                 Cari Lowongan
               </Link>
             </nav>
@@ -316,7 +327,7 @@ export default async function JobSeekerDashboardPage() {
                   )}
                   <div className="mt-6 flex flex-wrap gap-3">
                     <Link
-                      href="/#lowongan"
+                      href="/lowongan"
                       className="btn min-h-11 rounded-full border-0 bg-[#ECF0F1] px-5 text-xs font-extrabold text-[#2C3E50] hover:bg-white"
                     >
                       Cari Lowongan <ArrowRight size={15} />
