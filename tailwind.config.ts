@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-export default {
+const config = {
   darkMode: ["class"],
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -59,5 +59,41 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
-} satisfies Config;
+  plugins: [require("tailwindcss-animate"), require("daisyui")],
+  daisyui: {
+    themes: [
+      {
+        kerjalokal: {
+          primary: "#2C3E50",
+          "primary-content": "#ECF0F1",
+          secondary: "#34495E",
+          "secondary-content": "#ECF0F1",
+          accent: "#7F8C8D",
+          "accent-content": "#FFFFFF",
+          neutral: "#2C3E50",
+          "neutral-content": "#ECF0F1",
+          "base-100": "#ECF0F1",
+          "base-200": "#BDC3C7",
+          "base-300": "#7F8C8D",
+          "base-content": "#2C3E50",
+          info: "#34495E",
+          success: "#7F8C8D",
+          warning: "#BDC3C7",
+          error: "#A64B4B",
+          "--rounded-box": "1.25rem",
+          "--rounded-btn": "0.75rem",
+          "--rounded-badge": "999px",
+          "--animation-btn": "0.2s",
+          "--animation-input": "0.2s",
+          "--btn-focus-scale": "0.98",
+          "--border-btn": "1px",
+          "--tab-border": "1px",
+          "--tab-radius": "0.5rem",
+        },
+      },
+    ],
+    logs: false,
+  },
+} as Config;
+
+export default config;
