@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { notify, notifyInvalidForm, resetInvalidForm } from "@/lib/notify";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -35,21 +36,25 @@ export function SignUpForm() {
 
     if (normalizedName.length < 3) {
       setError("Masukkan nama lengkap minimal 3 karakter.");
+      notify("error", "Masukkan nama lengkap minimal 3 karakter.");
       return;
     }
 
     if (password.length < 8) {
       setError("Password minimal terdiri dari 8 karakter.");
+      notify("error", "Password minimal terdiri dari 8 karakter.");
       return;
     }
 
     if (password !== repeatPassword) {
       setError("Konfirmasi password belum sama dengan password.");
+      notify("error", "Konfirmasi password belum sama dengan password.");
       return;
     }
 
     if (!agreed) {
       setError("Silakan konfirmasi bahwa data yang kamu berikan benar.");
+      notify("error", "Silakan konfirmasi bahwa data yang kamu berikan benar.");
       return;
     }
 
@@ -98,6 +103,7 @@ export function SignUpForm() {
           );
         }
 
+        notify("success", "Akun pencari kerja berhasil dibuat. Lengkapi profilmu untuk melanjutkan.");
         router.replace("/onboarding/job-seeker");
         router.refresh();
         return;
@@ -105,15 +111,15 @@ export function SignUpForm() {
 
       // Jangan arahkan pengguna ke halaman konfirmasi email.
       // Session kosong berarti Confirm email masih aktif di Supabase.
-      setError(
-        "Akun belum mendapatkan sesi login. Buka Supabase Dashboard → Authentication → Sign In / Providers → Email, lalu nonaktifkan opsi Confirm email. Setelah itu, coba daftar kembali.",
-      );
+      const message = "Akun belum mendapatkan sesi login. Buka Supabase Dashboard → Authentication → Sign In / Providers → Email, lalu nonaktifkan opsi Confirm email. Setelah itu, coba daftar kembali.";
+      setError(message);
+      notify("error", message);
     } catch (caughtError: unknown) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Pendaftaran belum berhasil. Silakan coba kembali.",
-      );
+      const message = caughtError instanceof Error
+        ? caughtError.message
+        : "Pendaftaran belum berhasil. Silakan coba kembali.";
+      setError(message);
+      notify("error", message);
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +140,12 @@ export function SignUpForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSignUp} className="space-y-4">
+      <form
+        onSubmit={handleSignUp}
+        onInvalidCapture={(event) => notifyInvalidForm(event.currentTarget, "Periksa kembali input yang ditandai merah dan lengkapi sesuai ketentuan.")}
+        onInputCapture={(event) => resetInvalidForm(event.currentTarget)}
+        className="space-y-4"
+      >
         <div className="form-control w-full">
           <label className="label pb-2" htmlFor="full-name">
             <span className="label-text text-sm font-bold text-[#34495E]">
@@ -150,7 +161,8 @@ export function SignUpForm() {
               placeholder="Contoh: Andi Pratama"
               className="grow text-sm text-[#2C3E50] placeholder:text-[#7F8C8D]/70"
               value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
+              aria-invalid={Boolean(error && (fullName.trim().length < 3 || /nama|name/i.test(error)))}
+              onChange={(event) => { setError(null); setFullName(event.target.value); }}
               required
               minLength={3}
               maxLength={100}
@@ -173,7 +185,8 @@ export function SignUpForm() {
               placeholder="nama@email.com"
               className="grow text-sm text-[#2C3E50] placeholder:text-[#7F8C8D]/70"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              aria-invalid={Boolean(error && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) || /email|terdaftar|sudah ada/i.test(error)))}
+              onChange={(event) => { setError(null); setEmail(event.target.value); }}
               required
             />
           </label>
@@ -197,7 +210,8 @@ export function SignUpForm() {
               placeholder="Buat password yang kuat"
               className="grow text-sm text-[#2C3E50] placeholder:text-[#7F8C8D]/70"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              aria-invalid={Boolean(error && (password.length < 8 || (/password/i.test(error) && !/konfirmasi/i.test(error))))}
+              onChange={(event) => { setError(null); setPassword(event.target.value); }}
               required
               minLength={8}
             />
@@ -227,7 +241,8 @@ export function SignUpForm() {
               placeholder="Ulangi password"
               className="grow text-sm text-[#2C3E50] placeholder:text-[#7F8C8D]/70"
               value={repeatPassword}
-              onChange={(event) => setRepeatPassword(event.target.value)}
+              aria-invalid={Boolean(error && password !== repeatPassword)}
+              onChange={(event) => { setError(null); setRepeatPassword(event.target.value); }}
               required
               minLength={8}
             />
@@ -247,7 +262,8 @@ export function SignUpForm() {
             type="checkbox"
             className="checkbox checkbox-sm checkbox-primary mt-0.5 rounded-md border-[#7F8C8D] [--chkbg:#2C3E50] [--chkfg:#ECF0F1]"
             checked={agreed}
-            onChange={(event) => setAgreed(event.target.checked)}
+            aria-invalid={Boolean(error && !agreed)}
+            onChange={(event) => { setError(null); setAgreed(event.target.checked); }}
           />
           <span className="text-xs leading-5 text-[#53616D]">
             Saya menyatakan bahwa informasi yang saya berikan untuk pendaftaran

@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { notify, notifyInvalidForm, resetInvalidForm } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,9 +37,12 @@ export function UpdatePasswordForm({
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       // Update this route to redirect to an authenticated route. The user already has an active session.
+      notify("success", "Password berhasil diperbarui.");
       router.push("/protected");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      const message = error instanceof Error ? error.message : "An error occurred";
+      setError(message);
+      notify("error", message);
     } finally {
       setIsLoading(false);
     }
@@ -54,7 +58,11 @@ export function UpdatePasswordForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleForgotPassword}>
+          <form
+              onSubmit={handleForgotPassword}
+              onInvalidCapture={(event) => notifyInvalidForm(event.currentTarget, "Masukkan password baru yang valid.")}
+        onInputCapture={(event) => resetInvalidForm(event.currentTarget)}
+            >
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="password">New password</Label>
@@ -64,7 +72,9 @@ export function UpdatePasswordForm({
                   placeholder="New password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  aria-invalid={Boolean(error)}
+                  minLength={8}
+                  onChange={(e) => { setError(null); setPassword(e.target.value); }}
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}

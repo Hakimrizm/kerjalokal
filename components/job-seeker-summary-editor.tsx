@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { notify } from "@/lib/notify";
 import { Pencil, Check, X, LoaderCircle, Sparkles } from "lucide-react";
 
 export function JobSeekerSummaryEditor({
@@ -59,10 +60,12 @@ export function JobSeekerSummaryEditor({
 
       setSummary(trimmed);
       setIsEditing(false);
+      notify("success", "Ringkasan profil berhasil disimpan.");
       router.refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Gagal menyimpan ringkasan profil.";
       setError(message);
+      notify("error", message);
     } finally {
       setSaving(false);
     }

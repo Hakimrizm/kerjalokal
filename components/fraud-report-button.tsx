@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { notify } from "@/lib/notify";
 import { AlertTriangle, LoaderCircle, X } from "lucide-react";
 
 const reasons = [
@@ -22,29 +23,43 @@ export function FraudReportButton({ jobId }: { jobId: string }) {
   const [message, setMessage] = useState("");
 
   async function submit() {
-    setLoading(true); setMessage("");
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push(`/auth/login?next=${encodeURIComponent(`/lowongan/${jobId}`)}`);
+    setLoading(true);
+    setMessage("");
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push(`/auth/login?next=${encodeURIComponent(`/lowongan/${jobId}`)}`);
+        return;
+      }
+
+      const { error } = await supabase.from("fraud_reports").insert({
+        reporter_id: user.id,
+        target_type: "job",
+        target_id: jobId,
+        reason,
+        description: description.trim() || null,
+      });
+
+      if (error) {
+        if (error.code === "23505") {
+          throw new Error("Kamu sudah pernah melaporkan lowongan ini.");
+        }
+        throw error;
+      }
+
+      setOpen(false);
+      setDescription("");
+      setMessage("Laporan berhasil dikirim. Tim Super Admin akan meninjaunya.");
+      notify("success", "Laporan berhasil dikirim. Tim Super Admin akan meninjaunya.");
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "Laporan belum berhasil dikirim.";
+      setMessage(message);
+      notify("error", message);
+    } finally {
       setLoading(false);
-      return;
     }
-    const { error } = await supabase.from("fraud_reports").insert({
-      reporter_id: user.id,
-      target_type: "job",
-      target_id: jobId,
-      reason,
-      description: description.trim() || null,
-    });
-    setLoading(false);
-    if (error) {
-      setMessage(error.code === "23505" ? "Laporan tidak dapat dikirim. Silakan coba lagi nanti." : error.message);
-      return;
-    }
-    setOpen(false);
-    setDescription("");
-    setMessage("Laporan berhasil dikirim. Tim Super Admin akan meninjaunya.");
   }
 
   return (

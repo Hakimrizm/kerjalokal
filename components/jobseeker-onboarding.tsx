@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { IndonesiaRegionSelect } from "@/components/indonesia-region-select";
+import { notify, notifyInvalidForm, resetInvalidForm } from "@/lib/notify";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -565,11 +566,13 @@ export function JobSeekerOnboarding({
 		const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 		if (!allowedTypes.includes(file.type)) {
 			setError("Foto profil harus berformat JPG, PNG, atau WEBP.");
+			notify("error", "Foto profil harus berformat JPG, PNG, atau WEBP.");
 			input.value = "";
 			return;
 		}
 		if (file.size > 3 * 1024 * 1024) {
 			setError("Ukuran foto maksimal 3 MB.");
+			notify("error", "Ukuran foto maksimal 3 MB.");
 			input.value = "";
 			return;
 		}
@@ -607,12 +610,35 @@ export function JobSeekerOnboarding({
 			setPhotoFile(normalizedFile);
 			setPhotoPreview(URL.createObjectURL(normalizedFile));
 		} catch (caught) {
-			setError(
-				caught instanceof Error ? caught.message : "Foto belum dapat diproses.",
-			);
+			const message = caught instanceof Error ? caught.message : "Foto belum dapat diproses.";
+			setError(message);
+			notify("error", message);
 		} finally {
 			input.value = "";
 		}
+	}
+
+	function markInvalidFields(selectors: string[]) {
+		window.requestAnimationFrame(() => {
+			const form = document.querySelector<HTMLFormElement>("[data-jobseeker-onboarding-form]");
+			if (!form) return;
+			form.querySelectorAll('[aria-invalid="true"]').forEach((element) => {
+				element.removeAttribute("aria-invalid");
+			});
+			selectors.forEach((selector) => {
+				form.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+					element.setAttribute("aria-invalid", "true");
+				});
+			});
+			form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+		});
+	}
+
+	function validationFailure(message: string, selectors: string[] = []) {
+		setError(message);
+		notify("error", message);
+		markInvalidFields(selectors);
+		return false;
 	}
 
 	function validateCurrentStep() {
@@ -620,197 +646,169 @@ export function JobSeekerOnboarding({
 
 		if (currentStep === 0) {
 			if (identity.full_name.trim().length < 3) {
-				setError("Nama lengkap minimal 3 karakter.");
-				return false;
+				return validationFailure("Nama lengkap minimal 3 karakter.", ["#identity-name"]);
 			}
-			if (
-				!identity.phone.trim() ||
-				!/^[0-9+()\-\s]{8,20}$/.test(identity.phone.trim())
-			) {
-				setError("Masukkan nomor telepon aktif dengan format yang benar.");
-				return false;
+			if (!identity.phone.trim() || !/^[0-9+()\-\s]{8,20}$/.test(identity.phone.trim())) {
+				return validationFailure("Masukkan nomor telepon aktif dengan format yang benar.", ["#identity-phone"]);
 			}
-			if (
-				identity.birth_date &&
-				identity.birth_date > new Date().toISOString().slice(0, 10)
-			) {
-				setError("Tanggal lahir tidak boleh berada di masa depan.");
-				return false;
+			if (identity.birth_date && identity.birth_date > new Date().toISOString().slice(0, 10)) {
+				return validationFailure("Tanggal lahir tidak boleh berada di masa depan.", ["#identity-birth"]);
 			}
-			const requiredLocation = [
-				identity.province,
-				identity.city,
-				identity.district,
-				identity.village,
-				identity.address,
-			];
-			if (requiredLocation.some((value) => !value.trim())) {
-				setError(
+			const locationFields = [
+				["province", identity.province, "#identity-province"],
+				["city", identity.city, "#identity-city"],
+				["district", identity.district, "#identity-district"],
+				["village", identity.village, "#identity-village"],
+				["address", identity.address, "#identity-address"],
+			] as const;
+			const missingLocation = locationFields.filter(([, value]) => !value.trim());
+			if (missingLocation.length > 0) {
+				return validationFailure(
 					"Lengkapi provinsi, kota/kabupaten, kecamatan, desa/kelurahan, dan alamat.",
+					missingLocation.map(([, , selector]) => selector),
 				);
-				return false;
 			}
 			return true;
 		}
 
 		if (currentStep === 1) {
 			if (!preferences.desired_position.trim()) {
-				setError("Isi posisi pekerjaan yang kamu cari.");
-				return false;
+				return validationFailure("Isi posisi pekerjaan yang kamu cari.", ["#desired-position"]);
 			}
 			if (!preferences.job_category) {
-				setError("Pilih kategori pekerjaan yang kamu minati.");
-				return false;
+				return validationFailure("Pilih kategori pekerjaan yang kamu minati.", ["#job-category"]);
 			}
 			if (skills.length === 0) {
-				setError(
+				return validationFailure(
 					"Tambahkan minimal satu keahlian agar sistem dapat mencocokkan lowongan.",
+					["#skill-input"],
 				);
-				return false;
 			}
 			if (preferences.employment_types.length === 0) {
-				setError("Pilih minimal satu tipe pekerjaan yang kamu inginkan.");
-				return false;
+				return validationFailure(
+					"Pilih minimal satu tipe pekerjaan yang kamu inginkan.",
+					["#employment-type-first"],
+				);
 			}
-			const min = preferences.expected_salary_min
-				? Number(preferences.expected_salary_min)
-				: null;
-			const max = preferences.expected_salary_max
-				? Number(preferences.expected_salary_max)
-				: null;
-			if (min !== null && min < 0) {
-				setError("Ekspektasi gaji minimum tidak boleh negatif.");
-				return false;
+			const min = preferences.expected_salary_min ? Number(preferences.expected_salary_min) : null;
+			const max = preferences.expected_salary_max ? Number(preferences.expected_salary_max) : null;
+			if (min !== null && (!Number.isFinite(min) || min < 0)) {
+				return validationFailure("Ekspektasi gaji minimum tidak boleh negatif.", ["#salary-min"]);
 			}
-			if (max !== null && max < 0) {
-				setError("Ekspektasi gaji maksimum tidak boleh negatif.");
-				return false;
+			if (max !== null && (!Number.isFinite(max) || max < 0)) {
+				return validationFailure("Ekspektasi gaji maksimum tidak boleh negatif.", ["#salary-max"]);
 			}
 			if (min !== null && max !== null && min > max) {
-				setError("Gaji minimum tidak boleh lebih besar dari gaji maksimum.");
-				return false;
+				return validationFailure(
+					"Gaji minimum tidak boleh lebih besar dari gaji maksimum.",
+					["#salary-min", "#salary-max"],
+				);
 			}
 			return true;
 		}
 
 		if (currentStep === 2) {
-			const filled = educations.filter(
-				(item) =>
-					item.education_level ||
-					item.institution ||
-					item.major ||
-					item.start_year ||
-					item.end_year,
+			const filled = educations.filter((item) =>
+				item.education_level || item.institution || item.major || item.start_year || item.end_year,
 			);
 			if (filled.length === 0) {
-				setError(
+				return validationFailure(
 					"Tambahkan minimal satu riwayat pendidikan. Jika belum menempuh pendidikan formal, pilih opsi Tidak/belum sekolah.",
+					[`#education-level-${educations[0]?.id}`],
 				);
-				return false;
 			}
-			if (
-				filled.some((item) => !item.education_level || !item.institution.trim())
-			) {
-				setError(
+			const incomplete = filled.find((item) => !item.education_level || !item.institution.trim());
+			if (incomplete) {
+				return validationFailure(
 					"Setiap riwayat pendidikan yang ditambahkan harus memiliki jenjang dan nama institusi.",
+					[
+						`#education-level-${incomplete.id}`,
+						`#education-institution-${incomplete.id}`,
+					],
 				);
-				return false;
 			}
-			if (
-				filled.some(
-					(item) =>
-						item.start_year &&
-						item.end_year &&
-						Number(item.start_year) > Number(item.end_year),
-				)
-			) {
-				setError(
+			const invalidPeriod = filled.find(
+				(item) => item.start_year && item.end_year && Number(item.start_year) > Number(item.end_year),
+			);
+			if (invalidPeriod) {
+				return validationFailure(
 					"Tahun mulai pendidikan tidak boleh lebih besar dari tahun selesai.",
+					[`#education-start-${invalidPeriod.id}`, `#education-end-${invalidPeriod.id}`],
 				);
-				return false;
 			}
 			return true;
 		}
 
 		if (currentStep === 3) {
 			const filled = experiences.filter(
-				(item) =>
-					item.company ||
-					item.position ||
-					item.start_month ||
-					item.end_month ||
-					item.description,
+				(item) => item.company || item.position || item.start_month || item.end_month || item.description,
 			);
-			if (
-				filled.some((item) => !item.company.trim() || !item.position.trim())
-			) {
-				setError(
+			const incomplete = filled.find((item) => !item.company.trim() || !item.position.trim());
+			if (incomplete) {
+				return validationFailure(
 					"Lengkapi nama perusahaan dan posisi untuk setiap pengalaman kerja yang ditambahkan.",
+					[`#experience-company-${incomplete.id}`, `#experience-position-${incomplete.id}`],
 				);
-				return false;
 			}
-			if (
-				filled.some(
-					(item) =>
-						item.start_month &&
-						item.end_month &&
-						item.start_month > item.end_month &&
-						!item.is_current,
-				)
-			) {
-				setError(
+			const invalidPeriod = filled.find(
+				(item) => item.start_month && item.end_month && item.start_month > item.end_month && !item.is_current,
+			);
+			if (invalidPeriod) {
+				return validationFailure(
 					"Periode mulai kerja tidak boleh lebih akhir dari periode selesai.",
+					[`#experience-start-${invalidPeriod.id}`, `#experience-end-${invalidPeriod.id}`],
 				);
-				return false;
 			}
 			return true;
 		}
 
 		const filledCertificates = certificates.filter(
-			(item) =>
-				item.certificate_name ||
-				item.issuer ||
-				item.issue_date ||
-				item.credential_url ||
-				item.description,
+			(item) => item.certificate_name || item.issuer || item.issue_date || item.credential_url || item.description,
 		);
-		if (
-			filledCertificates.some(
-				(item) => !item.certificate_name.trim() || !item.issuer.trim(),
-			)
-		) {
-			setError(
+		const incompleteCertificate = filledCertificates.find(
+			(item) => !item.certificate_name.trim() || !item.issuer.trim(),
+		);
+		if (incompleteCertificate) {
+			return validationFailure(
 				"Lengkapi nama sertifikat dan lembaga penerbit untuk setiap sertifikat yang ditambahkan.",
+				[
+					`#certificate-name-${incompleteCertificate.id}`,
+					`#certificate-issuer-${incompleteCertificate.id}`,
+				],
 			);
-			return false;
 		}
-		if (
-			!validOptionalUrl(preferences.portfolio_url) ||
-			!validOptionalUrl(preferences.linkedin_url)
-		) {
-			setError(
-				"Tautan portofolio dan LinkedIn harus menggunakan URL yang valid (https://...).",
+		if (!validOptionalUrl(preferences.portfolio_url)) {
+			return validationFailure(
+				"Tautan portofolio harus menggunakan URL yang valid (https://...).",
+				["#portfolio-url"],
 			);
-			return false;
 		}
-		if (
-			filledCertificates.some((item) => !validOptionalUrl(item.credential_url))
-		) {
-			setError("Tautan bukti sertifikat harus menggunakan URL yang valid.");
-			return false;
+		if (!validOptionalUrl(preferences.linkedin_url)) {
+			return validationFailure(
+				"Tautan LinkedIn harus menggunakan URL yang valid (https://...).",
+				["#linkedin-url"],
+			);
 		}
-		if (
-			filledCertificates.some(
-				(item) =>
-					item.issue_date &&
-					item.expiry_date &&
-					item.issue_date > item.expiry_date,
-			)
-		) {
-			setError(
+		const invalidCertificateUrl = filledCertificates.find(
+			(item) => !validOptionalUrl(item.credential_url),
+		);
+		if (invalidCertificateUrl) {
+			return validationFailure(
+				"Tautan bukti sertifikat harus menggunakan URL yang valid.",
+				[`#certificate-url-${invalidCertificateUrl.id}`],
+			);
+		}
+		const invalidCertificateDate = filledCertificates.find(
+			(item) => item.issue_date && item.expiry_date && item.issue_date > item.expiry_date,
+		);
+		if (invalidCertificateDate) {
+			return validationFailure(
 				"Tanggal kedaluwarsa sertifikat tidak boleh lebih awal dari tanggal diterbitkan.",
+				[
+					`#certificate-issued-${invalidCertificateDate.id}`,
+					`#certificate-expiry-${invalidCertificateDate.id}`,
+				],
 			);
-			return false;
 		}
 		return true;
 	}
@@ -1078,6 +1076,14 @@ export function JobSeekerOnboarding({
 
 		try {
 			await saveCurrentStep();
+			notify(
+				"success",
+				isEditing
+					? "Perubahan profil berhasil disimpan."
+					: currentStep === steps.length - 1
+						? "Profil pencari kerja berhasil dilengkapi."
+						: `Tahap ${steps[currentStep].title.toLowerCase()} berhasil disimpan.`,
+			);
 
 			if (isEditing) {
 				// Mode edit hanya menyimpan bagian yang sedang dibuka.
@@ -1095,11 +1101,12 @@ export function JobSeekerOnboarding({
 				window.scrollTo({ top: 0, behavior: "smooth" });
 			}
 		} catch (caughtError: unknown) {
-			setError(
+			const message =
 				caughtError instanceof Error
 					? caughtError.message
-					: "Data belum berhasil disimpan. Periksa koneksi lalu coba lagi.",
-			);
+					: "Data belum berhasil disimpan. Periksa koneksi lalu coba lagi.";
+			setError(message);
+			notify("error", message);
 		} finally {
 			setSaving(false);
 		}
@@ -1333,7 +1340,19 @@ export function JobSeekerOnboarding({
 							</div>
 						) : (
 							<form
+								data-jobseeker-onboarding-form
 								className="space-y-7 px-5 py-6 sm:px-8 sm:py-8"
+								onInputCapture={(event) => {
+									(event.target as HTMLElement).removeAttribute("aria-invalid");
+									resetInvalidForm(event.currentTarget);
+									setError("");
+								}}
+								onChangeCapture={(event) => {
+									(event.target as HTMLElement).removeAttribute("aria-invalid");
+									resetInvalidForm(event.currentTarget);
+									setError("");
+								}}
+								onInvalidCapture={(event) => notifyInvalidForm(event.currentTarget, "Periksa kembali input yang ditandai merah dan lengkapi sesuai ketentuan.")}
 								onSubmit={(event) => {
 									event.preventDefault();
 									void handleNext();
@@ -1789,6 +1808,7 @@ export function JobSeekerOnboarding({
 														>
 															<input
 																type="checkbox"
+																id={option === employmentOptions[0] ? "employment-type-first" : undefined}
 																className="checkbox checkbox-sm checkbox-primary rounded-md border-[#BDC3C7] [--chkbg:#2C3E50] [--chkfg:#ECF0F1]"
 																checked={checked}
 																onChange={(event) =>

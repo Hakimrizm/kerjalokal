@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { notify } from "@/lib/notify";
 import { ArrowLeft, ArrowRight, FileText, LoaderCircle, Send, Save, MapPin } from "lucide-react";
 
 export type EmployerJobRecord = {
@@ -88,15 +89,35 @@ export function EmployerJobForm({
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormState, string>>>({});
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setError(null);
     setForm((current) => ({ ...current, [key]: value }));
+    setFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function failValidation(message: string, fields: (keyof FormState)[]) {
+    const nextErrors: Partial<Record<keyof FormState, string>> = {};
+    fields.forEach((field) => {
+      nextErrors[field] = message;
+    });
+    setFieldErrors(nextErrors);
+    setError(message);
+    notify("error", message);
   }
 
   function useCurrentLocation() {
     setError(null);
     if (!navigator.geolocation) {
-      setError("Browser tidak mendukung pengambilan lokasi. Kamu dapat memasukkan koordinat Google Maps secara manual.");
+      const message = "Browser tidak mendukung pengambilan lokasi. Kamu dapat memasukkan koordinat Google Maps secara manual.";
+      setError(message);
+      notify("error", message);
       return;
     }
 
@@ -109,11 +130,11 @@ export function EmployerJobForm({
       },
       (geoError) => {
         setGeoLoading(false);
-        setError(
-          geoError.code === 1
-            ? "Izin lokasi ditolak. Aktifkan izin lokasi browser atau masukkan koordinat Google Maps secara manual."
-            : "Lokasi belum dapat diperoleh. Silakan coba kembali atau masukkan koordinat secara manual.",
-        );
+        const message = geoError.code === 1
+          ? "Izin lokasi ditolak. Aktifkan izin lokasi browser atau masukkan koordinat Google Maps secara manual."
+          : "Lokasi belum dapat diperoleh. Silakan coba kembali atau masukkan koordinat secara manual.";
+        setError(message);
+        notify("error", message);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 },
     );
@@ -121,20 +142,70 @@ export function EmployerJobForm({
 
   async function saveJob(mode: "draft" | "publish") {
     setError(null);
-    if (form.title.trim().length < 3) return setError("Judul lowongan minimal 3 karakter.");
-    if (!form.category) return setError("Pilih kategori pekerjaan.");
-    if (!form.description.trim() || form.description.trim().length < 30) return setError("Deskripsi pekerjaan minimal 30 karakter.");
-    if (!form.requirements.trim() || form.requirements.trim().length < 10) return setError("Tuliskan persyaratan kandidat minimal 10 karakter.");
-    if (!form.province.trim() || !form.city.trim() || !form.district.trim()) return setError("Lengkapi provinsi, kota/kabupaten, dan kecamatan lokasi kerja.");
-    if (Boolean(form.latitude.trim()) !== Boolean(form.longitude.trim())) return setError("Isi latitude dan longitude secara lengkap, atau kosongkan keduanya.");
+    setFieldErrors({});
+
+    if (form.title.trim().length < 3) {
+      failValidation("Judul lowongan minimal 3 karakter.", ["title"]);
+      return;
+    }
+    if (!form.category) {
+      failValidation("Pilih kategori pekerjaan.", ["category"]);
+      return;
+    }
+    if (!form.description.trim() || form.description.trim().length < 30) {
+      failValidation("Deskripsi pekerjaan minimal 30 karakter.", ["description"]);
+      return;
+    }
+    if (!form.requirements.trim() || form.requirements.trim().length < 10) {
+      failValidation("Tuliskan persyaratan kandidat minimal 10 karakter.", ["requirements"]);
+      return;
+    }
+    if (!form.province.trim() || !form.city.trim() || !form.district.trim()) {
+      const missing: (keyof FormState)[] = [];
+      if (!form.province.trim()) missing.push("province");
+      if (!form.city.trim()) missing.push("city");
+      if (!form.district.trim()) missing.push("district");
+      failValidation("Lengkapi provinsi, kota/kabupaten, dan kecamatan lokasi kerja.", missing);
+      return;
+    }
+    if (Boolean(form.latitude.trim()) !== Boolean(form.longitude.trim())) {
+      failValidation("Isi latitude dan longitude secara lengkap, atau kosongkan keduanya.", [
+        ...(form.latitude.trim() ? ["longitude" as const] : ["latitude" as const]),
+      ]);
+      return;
+    }
     if (form.latitude.trim() || form.longitude.trim()) {
       const latitude = Number(form.latitude);
       const longitude = Number(form.longitude);
-      if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) return setError("Latitude harus berupa angka antara -90 sampai 90.");
-      if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) return setError("Longitude harus berupa angka antara -180 sampai 180.");
+      if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+        failValidation("Latitude harus berupa angka antara -90 sampai 90.", ["latitude"]);
+        return;
+      }
+      if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+        failValidation("Longitude harus berupa angka antara -180 sampai 180.", ["longitude"]);
+        return;
+      }
     }
-    if (!form.salary_negotiable && form.salary_min && form.salary_max && Number(form.salary_min) > Number(form.salary_max)) return setError("Gaji minimum tidak boleh lebih besar dari gaji maksimum.");
-    if (Number(form.vacancies) < 1) return setError("Jumlah tenaga kerja minimal 1 orang.");
+    if (!form.salary_negotiable && form.salary_min && Number(form.salary_min) < 0) {
+      failValidation("Gaji minimum tidak boleh bernilai negatif.", ["salary_min"]);
+      return;
+    }
+    if (!form.salary_negotiable && form.salary_max && Number(form.salary_max) < 0) {
+      failValidation("Gaji maksimum tidak boleh bernilai negatif.", ["salary_max"]);
+      return;
+    }
+    if (!form.salary_negotiable && form.salary_min && form.salary_max && Number(form.salary_min) > Number(form.salary_max)) {
+      failValidation("Gaji minimum tidak boleh lebih besar dari gaji maksimum.", ["salary_min", "salary_max"]);
+      return;
+    }
+    if (!Number.isInteger(Number(form.vacancies)) || Number(form.vacancies) < 1) {
+      failValidation("Jumlah tenaga kerja minimal 1 orang dan harus berupa bilangan bulat.", ["vacancies"]);
+      return;
+    }
+    if (form.application_deadline && form.application_deadline < new Date().toISOString().slice(0, 10)) {
+      failValidation("Batas akhir lamaran tidak boleh berada di tanggal yang sudah lewat.", ["application_deadline"]);
+      return;
+    }
 
     setSaving(mode);
     try {
@@ -200,10 +271,22 @@ export function EmployerJobForm({
         if (insertError) throw insertError;
       }
 
+      notify(
+        "success",
+        initialJob
+          ? mode === "publish"
+            ? "Perubahan lowongan berhasil disimpan dan ditayangkan."
+            : "Perubahan lowongan berhasil disimpan."
+          : mode === "publish"
+            ? "Lowongan berhasil ditambahkan dan dipublikasikan."
+            : "Draft lowongan berhasil disimpan.",
+      );
       router.replace("/dashboard/pelaku-usaha/lowongan?saved=1");
       router.refresh();
     } catch (caught: unknown) {
-      setError(caught instanceof Error ? caught.message : "Lowongan belum berhasil disimpan.");
+      const message = caught instanceof Error ? caught.message : "Lowongan belum berhasil disimpan.";
+      setError(message);
+      notify("error", message);
     } finally {
       setSaving(null);
     }
@@ -219,8 +302,8 @@ export function EmployerJobForm({
         <section>
           <h2 className="text-sm font-extrabold text-[#34495E]">Informasi posisi</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="form-control sm:col-span-2"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Nama posisi <span className="text-red-500">*</span></span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.title} onChange={(e) => update("title", e.target.value)} placeholder="Contoh: Kasir Toko" maxLength={120} /></div>
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Kategori pekerjaan <span className="text-red-500">*</span></span></label><select className="select select-bordered h-12 min-h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.category} onChange={(e) => update("category", e.target.value)}><option value="">Pilih kategori</option>{["Administrasi","Akuntansi & Keuangan","Customer Service","Desain & Kreatif","Gudang & Logistik","Kesehatan","Kuliner & F&B","Marketing & Penjualan","Operasional","Pendidikan","Retail","Teknik & Bengkel","Teknologi Informasi","Lainnya"].map((item) => <option key={item}>{item}</option>)}</select></div>
+            <div className="form-control sm:col-span-2"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Nama posisi <span className="text-red-500">*</span></span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.title} aria-invalid={Boolean(fieldErrors.title)} onChange={(e) => update("title", e.target.value)} required minLength={3} placeholder="Contoh: Kasir Toko" maxLength={120} /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Kategori pekerjaan <span className="text-red-500">*</span></span></label><select className="select select-bordered h-12 min-h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.category} aria-invalid={Boolean(fieldErrors.category)} onChange={(e) => update("category", e.target.value)} required><option value="">Pilih kategori</option>{["Administrasi","Akuntansi & Keuangan","Customer Service","Desain & Kreatif","Gudang & Logistik","Kesehatan","Kuliner & F&B","Marketing & Penjualan","Operasional","Pendidikan","Retail","Teknik & Bengkel","Teknologi Informasi","Lainnya"].map((item) => <option key={item}>{item}</option>)}</select></div>
             <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Tipe pekerjaan <span className="text-red-500">*</span></span></label><select className="select select-bordered h-12 min-h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.employment_type} onChange={(e) => update("employment_type", e.target.value)}>{["Full-time","Part-time","Kontrak","Freelance","Magang","Harian"].map((item) => <option key={item}>{item}</option>)}</select></div>
             <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Pengalaman yang dibutuhkan</span></label><select className="select select-bordered h-12 min-h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.experience_level} onChange={(e) => update("experience_level", e.target.value)}>{["Tidak harus berpengalaman","Fresh graduate","Kurang dari 1 tahun","1–2 tahun","3–5 tahun","Lebih dari 5 tahun"].map((item) => <option key={item}>{item}</option>)}</select></div>
             <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Pendidikan minimum</span></label><select className="select select-bordered h-12 min-h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.education_level} onChange={(e) => update("education_level", e.target.value)}>{["Tidak ada batasan","SD / Sederajat","SMP / Sederajat","SMA / SMK","D1 / D2 / D3","S1 / D4","S2","Lainnya"].map((item) => <option key={item}>{item}</option>)}</select></div>
@@ -230,20 +313,20 @@ export function EmployerJobForm({
         <section className="border-t border-[#EEF1F2] pt-6">
           <h2 className="text-sm font-extrabold text-[#34495E]">Deskripsi dan persyaratan</h2>
           <div className="mt-4 space-y-4">
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Deskripsi pekerjaan <span className="text-red-500">*</span></span></label><textarea className="textarea textarea-bordered min-h-32 rounded-xl border-[#D5DDE1] bg-white text-sm leading-6" value={form.description} onChange={(e) => update("description", e.target.value)} placeholder="Jelaskan gambaran pekerjaan, lingkungan kerja, dan tujuan posisi ini..." /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Deskripsi pekerjaan <span className="text-red-500">*</span></span></label><textarea className="textarea textarea-bordered min-h-32 rounded-xl border-[#D5DDE1] bg-white text-sm leading-6" value={form.description} aria-invalid={Boolean(fieldErrors.description)} onChange={(e) => update("description", e.target.value)} required minLength={30} placeholder="Jelaskan gambaran pekerjaan, lingkungan kerja, dan tujuan posisi ini..." /></div>
             <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Tanggung jawab</span></label><textarea className="textarea textarea-bordered min-h-28 rounded-xl border-[#D5DDE1] bg-white text-sm leading-6" value={form.responsibilities} onChange={(e) => update("responsibilities", e.target.value)} placeholder="Tuliskan tugas utama. Pisahkan setiap poin dengan baris baru." /></div>
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Persyaratan kandidat <span className="text-red-500">*</span></span></label><textarea className="textarea textarea-bordered min-h-28 rounded-xl border-[#D5DDE1] bg-white text-sm leading-6" value={form.requirements} onChange={(e) => update("requirements", e.target.value)} placeholder="Contoh: mampu berkomunikasi dengan baik, teliti, bersedia bekerja shift..." /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Persyaratan kandidat <span className="text-red-500">*</span></span></label><textarea className="textarea textarea-bordered min-h-28 rounded-xl border-[#D5DDE1] bg-white text-sm leading-6" value={form.requirements} aria-invalid={Boolean(fieldErrors.requirements)} onChange={(e) => update("requirements", e.target.value)} required minLength={10} placeholder="Contoh: mampu berkomunikasi dengan baik, teliti, bersedia bekerja shift..." /></div>
           </div>
         </section>
 
         <section className="border-t border-[#EEF1F2] pt-6">
           <h2 className="text-sm font-extrabold text-[#34495E]">Kompensasi dan kebutuhan</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Gaji minimum (Rp)</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" type="number" min="0" value={form.salary_min} onChange={(e) => update("salary_min", e.target.value)} placeholder="Contoh: 2500000" disabled={form.salary_negotiable} /></div>
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Gaji maksimum (Rp)</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" type="number" min="0" value={form.salary_max} onChange={(e) => update("salary_max", e.target.value)} placeholder="Contoh: 3500000" disabled={form.salary_negotiable} /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Gaji minimum (Rp)</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" type="number" min="0" value={form.salary_min} aria-invalid={Boolean(fieldErrors.salary_min)} onChange={(e) => update("salary_min", e.target.value)} placeholder="Contoh: 2500000" disabled={form.salary_negotiable} /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Gaji maksimum (Rp)</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" type="number" min="0" value={form.salary_max} aria-invalid={Boolean(fieldErrors.salary_max)} onChange={(e) => update("salary_max", e.target.value)} placeholder="Contoh: 3500000" disabled={form.salary_negotiable} /></div>
             <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[#F4F6F7] p-3 sm:col-span-2"><input type="checkbox" className="checkbox checkbox-primary checkbox-sm" checked={form.salary_negotiable} onChange={(e) => update("salary_negotiable", e.target.checked)} /><span className="text-xs font-semibold text-[#53616D]">Gaji dapat dinegosiasikan / dibicarakan saat wawancara.</span></label>
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Jumlah tenaga kerja</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" type="number" min="1" max="999" value={form.vacancies} onChange={(e) => update("vacancies", e.target.value)} /></div>
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Batas akhir lamaran</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" type="date" min={new Date().toISOString().slice(0, 10)} value={form.application_deadline} onChange={(e) => update("application_deadline", e.target.value)} /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Jumlah tenaga kerja</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" type="number" min="1" max="999" value={form.vacancies} aria-invalid={Boolean(fieldErrors.vacancies)} onChange={(e) => update("vacancies", e.target.value)} /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Batas akhir lamaran</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" type="date" min={new Date().toISOString().slice(0, 10)} value={form.application_deadline} aria-invalid={Boolean(fieldErrors.application_deadline)} onChange={(e) => update("application_deadline", e.target.value)} /></div>
           </div>
         </section>
 
@@ -251,9 +334,9 @@ export function EmployerJobForm({
           <h2 className="text-sm font-extrabold text-[#34495E]">Lokasi pekerjaan</h2>
           <p className="mt-1 text-xs text-[#8A969D]">Lokasi otomatis diisi dari profil usaha. Kamu tetap dapat mengubahnya jika tempat kerja berbeda.</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Provinsi *</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.province} onChange={(e) => update("province", e.target.value)} /></div>
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Kabupaten / Kota *</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.city} onChange={(e) => update("city", e.target.value)} /></div>
-            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Kecamatan *</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.district} onChange={(e) => update("district", e.target.value)} /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Provinsi *</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.province} aria-invalid={Boolean(fieldErrors.province)} onChange={(e) => update("province", e.target.value)} required /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Kabupaten / Kota *</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.city} aria-invalid={Boolean(fieldErrors.city)} onChange={(e) => update("city", e.target.value)} required /></div>
+            <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Kecamatan *</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.district} aria-invalid={Boolean(fieldErrors.district)} onChange={(e) => update("district", e.target.value)} required /></div>
             <div className="form-control"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Desa / Kelurahan</span></label><input className="input input-bordered h-12 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.village} onChange={(e) => update("village", e.target.value)} /></div>
             <div className="form-control sm:col-span-2"><label className="label"><span className="label-text text-xs font-bold text-[#53616D]">Alamat / patokan tempat kerja</span></label><textarea className="textarea textarea-bordered min-h-20 rounded-xl border-[#D5DDE1] bg-white text-sm" value={form.address} onChange={(e) => update("address", e.target.value)} placeholder="Alamat lengkap atau patokan lokasi kerja" /></div>
           </div>
@@ -274,8 +357,8 @@ export function EmployerJobForm({
               </button>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div className="form-control"><label className="label py-1"><span className="label-text text-[11px] font-bold text-[#53616D]">Latitude</span></label><input className="input input-bordered h-10 rounded-lg border-[#D5DDE1] bg-white text-xs" inputMode="decimal" value={form.latitude} onChange={(e) => update("latitude", e.target.value)} placeholder="Contoh: -6.2000000" /></div>
-              <div className="form-control"><label className="label py-1"><span className="label-text text-[11px] font-bold text-[#53616D]">Longitude</span></label><input className="input input-bordered h-10 rounded-lg border-[#D5DDE1] bg-white text-xs" inputMode="decimal" value={form.longitude} onChange={(e) => update("longitude", e.target.value)} placeholder="Contoh: 106.8166660" /></div>
+              <div className="form-control"><label className="label py-1"><span className="label-text text-[11px] font-bold text-[#53616D]">Latitude</span></label><input className="input input-bordered h-10 rounded-lg border-[#D5DDE1] bg-white text-xs" inputMode="decimal" value={form.latitude} aria-invalid={Boolean(fieldErrors.latitude)} onChange={(e) => update("latitude", e.target.value)} placeholder="Contoh: -6.2000000" /></div>
+              <div className="form-control"><label className="label py-1"><span className="label-text text-[11px] font-bold text-[#53616D]">Longitude</span></label><input className="input input-bordered h-10 rounded-lg border-[#D5DDE1] bg-white text-xs" inputMode="decimal" value={form.longitude} aria-invalid={Boolean(fieldErrors.longitude)} onChange={(e) => update("longitude", e.target.value)} placeholder="Contoh: 106.8166660" /></div>
             </div>
           </div>
         </section>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { notify, notifyInvalidForm, resetInvalidForm } from "@/lib/notify";
 import { BriefcaseBusiness, Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 
 export function AdminLoginForm() {
@@ -42,10 +43,13 @@ export function AdminLoginForm() {
         throw new Error("Akun ini bukan akun Admin KerjaLokal. Gunakan halaman login sesuai jenis akun.");
       }
 
+      notify("success", "Berhasil masuk ke Control Center.");
       router.replace("/admin");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Email atau password tidak sesuai.");
+      const message = caught instanceof Error ? caught.message : "Email atau password tidak sesuai.";
+      setError(message);
+      notify("error", message);
     } finally {
       setLoading(false);
     }
@@ -63,19 +67,24 @@ export function AdminLoginForm() {
           <h1 className="mt-4 text-2xl font-extrabold tracking-tight">Login Administrator</h1>
           <p className="mt-2 text-sm leading-6 text-white/65">Halaman khusus Admin dan Super Admin KerjaLokal.</p>
         </div>
-        <form onSubmit={submit} className="space-y-5 p-7 sm:p-9">
+        <form
+          onSubmit={submit}
+          onInvalidCapture={(event) => notifyInvalidForm(event.currentTarget, "Masukkan email dan password dengan format yang benar.")}
+        onInputCapture={(event) => resetInvalidForm(event.currentTarget)}
+          className="space-y-5 p-7 sm:p-9"
+        >
           <div className="form-control">
             <label htmlFor="admin-email" className="label pb-2"><span className="label-text text-xs font-bold text-[#34495E]">Email administrator</span></label>
             <label className="input input-bordered flex h-12 items-center gap-3 rounded-xl border-[#D5DDE1] bg-white">
               <Mail size={17} className="text-[#8A969D]"/>
-              <input id="admin-email" type="email" required autoComplete="username" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="admin@kerjalokal.id" className="grow text-sm"/>
+              <input id="admin-email" type="email" required autoComplete="username" value={email} aria-invalid={Boolean(error)} onChange={(e)=>{setError("");setEmail(e.target.value);}} placeholder="admin@kerjalokal.id" className="grow text-sm"/>
             </label>
           </div>
           <div className="form-control">
             <label htmlFor="admin-password" className="label pb-2"><span className="label-text text-xs font-bold text-[#34495E]">Password</span></label>
             <label className="input input-bordered flex h-12 items-center gap-3 rounded-xl border-[#D5DDE1] bg-white">
               <LockKeyhole size={17} className="text-[#8A969D]"/>
-              <input id="admin-password" type={showPassword ? "text" : "password"} required autoComplete="current-password" value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Masukkan password" className="grow text-sm"/>
+              <input id="admin-password" type={showPassword ? "text" : "password"} required autoComplete="current-password" value={password} aria-invalid={Boolean(error)} onChange={(e)=>{setError("");setPassword(e.target.value);}} placeholder="Masukkan password" className="grow text-sm"/>
               <button type="button" onClick={()=>setShowPassword((value)=>!value)} className="btn btn-ghost btn-xs btn-square text-[#8A969D]" aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}>{showPassword ? <EyeOff size={16}/> : <Eye size={16}/>} </button>
             </label>
           </div>

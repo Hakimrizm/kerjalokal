@@ -86,16 +86,32 @@ export default async function AdminFraudPage() {
 		]),
 	];
 
-	const { data: employers } = employerIds.length
-		? await supabase
-				.from("employer_profiles")
-				.select("user_id,business_name")
-				.in("user_id", employerIds)
-		: { data: [] as { user_id: string; business_name: string }[] };
+	// Mengumpulkan reporter_id untuk mengambil nama pelapor
+	const reporterIds = [
+		...new Set(reportRows.map((report) => report.reporter_id).filter(Boolean)),
+	];
+
+	const [{ data: employers }, { data: reporterProfiles }] = await Promise.all([
+		employerIds.length
+			? supabase
+					.from("employer_profiles")
+					.select("user_id,business_name")
+					.in("user_id", employerIds)
+			: Promise.resolve({ data: [] }),
+		reporterIds.length
+			? supabase.from("profiles").select("id,full_name").in("id", reporterIds)
+			: Promise.resolve({ data: [] }),
+	]);
 
 	const employerName = (id?: string) =>
 		(employers ?? []).find((item) => item.user_id === id)?.business_name ??
 		"Usaha tidak diketahui";
+
+	const reporterName = (id?: string | null) => {
+		if (!id) return "Akun dihapus";
+		const profile = (reporterProfiles ?? []).find((item) => item.id === id);
+		return profile?.full_name || "Pengguna";
+	};
 
 	return (
 		<div className="space-y-7">
@@ -206,7 +222,9 @@ export default async function AdminFraudPage() {
 												<span className="inline-flex items-center gap-1">
 													<UserRound size={12} />
 													Pelapor:{" "}
-													{report.reporter_id?.slice(0, 8) ?? "Akun dihapus"}
+													<span className="font-semibold text-[#53616D]">
+														{reporterName(report.reporter_id)}
+													</span>
 												</span>
 											</p>
 										</div>

@@ -54,3 +54,46 @@
 }
 
 /* KerjaLokal brand palette: #2C3E50, #34495E, #7F8C8D, #BDC3C7, #ECF0F1 */
+
+
+/* KerjaLokal form validation feedback */
+@layer components {
+  input:user-invalid:not([type="checkbox"]):not([type="radio"]),
+  select:user-invalid,
+  textarea:user-invalid,
+  input[aria-invalid="true"]:not([type="checkbox"]):not([type="radio"]),
+  select[aria-invalid="true"],
+  textarea[aria-invalid="true"] {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.18) !important;
+  }
+
+  label.input:has(input:user-invalid),
+  label.input:has(input[aria-invalid="true"]) {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.18) !important;
+  }
+
+  input[type="checkbox"][aria-invalid="true"] {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+  }
+
+  input:user-invalid:focus,
+  select:user-invalid:focus,
+  textarea:user-invalid:focus,
+  input[aria-invalid="true"]:focus,
+  select[aria-invalid="true"]:focus,
+  textarea[aria-invalid="true"]:focus {
+    border-color: #dc2626 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+  }
+
+  .kl-field-error {
+    margin-top: 0.35rem;
+    color: #dc2626;
+    font-size: 0.7rem;
+    line-height: 1.25rem;
+  }
+}

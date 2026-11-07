@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { notify } from "@/lib/notify";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -156,11 +157,14 @@ export function JobApplicationButton({ jobId }: { jobId: string }) {
       }
 
       setApplied(true);
+      notify("success", "Lamaran berhasil dikirim dan CV ATS berhasil dilampirkan.");
       setOpen(false);
       setCoverLetter("");
       router.refresh();
     } catch (caught: unknown) {
-      setError(caught instanceof Error ? caught.message : "Lamaran belum berhasil dikirim.");
+      const message = caught instanceof Error ? caught.message : "Lamaran belum berhasil dikirim.";
+      setError(message);
+      notify("error", message);
     } finally {
       setLoading(false);
     }

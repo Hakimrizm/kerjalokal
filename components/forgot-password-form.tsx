@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { notify, notifyInvalidForm, resetInvalidForm } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,8 +40,11 @@ export function ForgotPasswordForm({
       });
       if (error) throw error;
       setSuccess(true);
+      notify("success", "Tautan reset password berhasil dikirim. Periksa email kamu.");
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      const message = error instanceof Error ? error.message : "An error occurred";
+      setError(message);
+      notify("error", message);
     } finally {
       setIsLoading(false);
     }
@@ -71,7 +75,11 @@ export function ForgotPasswordForm({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleForgotPassword}>
+            <form
+              onSubmit={handleForgotPassword}
+              onInvalidCapture={(event) => notifyInvalidForm(event.currentTarget, "Masukkan alamat email yang valid.")}
+        onInputCapture={(event) => resetInvalidForm(event.currentTarget)}
+            >
               <div className="flex flex-col gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
@@ -81,7 +89,8 @@ export function ForgotPasswordForm({
                     placeholder="m@example.com"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    aria-invalid={Boolean(error)}
+                    onChange={(e) => { setError(null); setEmail(e.target.value); }}
                   />
                 </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}

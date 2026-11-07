@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { notify, notifyInvalidForm, resetInvalidForm } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -103,9 +104,12 @@ export function LoginForm({
       } else {
         throw new Error("Role akun tidak dikenali. Hubungi administrator KerjaLokal.");
       }
+      notify("success", "Berhasil masuk ke akun KerjaLokal.");
       router.refresh();
     } catch (caughtError: unknown) {
-      setError(caughtError instanceof Error ? caughtError.message : "Email atau password tidak sesuai.");
+      const message = caughtError instanceof Error ? caughtError.message : "Email atau password tidak sesuai.";
+      setError(message);
+      notify("error", message);
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +125,11 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin}>
+          <form
+            onSubmit={handleLogin}
+            onInvalidCapture={(event) => notifyInvalidForm(event.currentTarget, "Masukkan email dan password dengan format yang benar.")}
+        onInputCapture={(event) => resetInvalidForm(event.currentTarget)}
+          >
             <div className="flex flex-col gap-5">
               <div className="grid gap-2">
                 <Label htmlFor="email" className="text-[#34495E]">Email</Label>
@@ -132,7 +140,8 @@ export function LoginForm({
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  aria-invalid={Boolean(error)}
+                  onChange={(event) => { setError(null); setEmail(event.target.value); }}
                   className="h-11 border-[#BDC3C7] focus-visible:ring-[#34495E]"
                 />
               </div>
@@ -149,7 +158,8 @@ export function LoginForm({
                   autoComplete="current-password"
                   required
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  aria-invalid={Boolean(error)}
+                  onChange={(event) => { setError(null); setPassword(event.target.value); }}
                   className="h-11 border-[#BDC3C7] focus-visible:ring-[#34495E]"
                 />
               </div>
