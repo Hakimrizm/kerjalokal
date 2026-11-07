@@ -26,6 +26,8 @@ function formatSalary(job: {
   return "Gaji dibicarakan";
 }
 
+const LANDING_JOBS_LIMIT = 8;
+
 export default async function Home() {
   const supabase = await createClient();
   const {
@@ -39,7 +41,7 @@ export default async function Home() {
     )
     .eq("status", "published")
     .order("created_at", { ascending: false })
-    .limit(8);
+    .limit(LANDING_JOBS_LIMIT);
 
   const rows = jobs ?? [];
   const employerIds = [...new Set(rows.map((job) => job.employer_id))];

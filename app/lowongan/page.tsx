@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
 	ArrowLeft,
@@ -89,7 +90,39 @@ function calculateDistanceKm(
 	);
 }
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 8;
+
+function getPaginationItems(currentPage: number, totalPages: number) {
+	if (totalPages <= 7) {
+		return Array.from({ length: totalPages }, (_, index) => index + 1);
+	}
+
+	if (currentPage <= 4) {
+		return [1, 2, 3, 4, 5, "...", totalPages] as const;
+	}
+
+	if (currentPage >= totalPages - 3) {
+		return [
+			1,
+			"...",
+			totalPages - 4,
+			totalPages - 3,
+			totalPages - 2,
+			totalPages - 1,
+			totalPages,
+		] as const;
+	}
+
+	return [
+		1,
+		"...",
+		currentPage - 1,
+		currentPage,
+		currentPage + 1,
+		"...",
+		totalPages,
+	] as const;
+}
 
 export default async function PublicJobsPage({
 	searchParams,
@@ -141,6 +174,9 @@ export default async function PublicJobsPage({
 
 	const totalJobs = countResult.count ?? 0;
 	const totalPages = Math.ceil(totalJobs / ITEMS_PER_PAGE) || 1;
+	if (currentPage > totalPages) {
+		redirect(totalPages > 1 ? `/lowongan?page=${totalPages}` : "/lowongan");
+	}
 	const rows = (jobsResult.data ?? []) as PublicJobRow[];
 
 	const employerIds = [...new Set(rows.map((job) => job.employer_id))];
@@ -247,45 +283,83 @@ export default async function PublicJobsPage({
 						{/* Pagination Controls */}
 						{totalPages > 1 && (
 							<nav
-								aria-label="Navigasi Halaman Lowongan"
-								className="flex items-center justify-between rounded-2xl border border-[#E2E7E9] bg-white px-5 py-4 shadow-sm"
+								aria-label="Navigasi halaman lowongan"
+								className="flex flex-col gap-4 rounded-2xl border border-[#E2E7E9] bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-5"
 							>
-								<div className="text-xs text-[#7F8C8D]">
-									Halaman{" "}
+								<p className="text-center text-xs text-[#7F8C8D] sm:text-left">
+									Menampilkan{" "}
 									<span className="font-extrabold text-[#2C3E50]">
-										{currentPage}
+										{from + 1}–{Math.min(from + listingJobs.length, totalJobs)}
 									</span>{" "}
 									dari{" "}
 									<span className="font-extrabold text-[#2C3E50]">
-										{totalPages}
+										{totalJobs}
 									</span>{" "}
-									(Total {totalJobs} lowongan)
-								</div>
+									lowongan
+								</p>
 
-								<div className="flex items-center gap-2">
+								<div className="flex flex-wrap items-center justify-center gap-1.5">
 									{currentPage > 1 ? (
 										<Link
-											href={`/jobs?page=${currentPage - 1}`}
-											className="inline-flex items-center gap-1 rounded-xl border border-[#E2E7E9] bg-white px-3 py-2 text-xs font-bold text-[#34495E] transition-colors hover:bg-[#F3F5F6]"
+											href={`/lowongan?page=${currentPage - 1}`}
+											aria-label="Halaman sebelumnya"
+											className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#E2E7E9] bg-white px-3 text-xs font-bold text-[#34495E] transition-colors hover:bg-[#F3F5F6]"
 										>
-											<ChevronLeft size={14} /> Sebelumnya
+											<ChevronLeft size={14} />
+											<span className="hidden sm:inline">Sebelumnya</span>
 										</Link>
 									) : (
-										<span className="inline-flex items-center gap-1 rounded-xl border border-[#E2E7E9] bg-[#F7F9FA] px-3 py-2 text-xs font-bold text-[#BDC3C3] cursor-not-allowed">
-											<ChevronLeft size={14} /> Sebelumnya
+										<span
+											aria-disabled="true"
+											className="inline-flex h-9 cursor-not-allowed items-center gap-1 rounded-lg border border-[#E2E7E9] bg-[#F7F9FA] px-3 text-xs font-bold text-[#BDC3C3]"
+										>
+											<ChevronLeft size={14} />
+											<span className="hidden sm:inline">Sebelumnya</span>
 										</span>
+									)}
+
+									{getPaginationItems(currentPage, totalPages).map((item, index) =>
+										item === "..." ? (
+											<span
+												key={`ellipsis-${index}`}
+												aria-hidden="true"
+												className="grid h-9 min-w-8 place-items-center text-xs text-[#9AA5AB]"
+											>
+												…
+											</span>
+										) : (
+											<Link
+												key={item}
+												href={`/lowongan?page=${item}`}
+												aria-label={`Halaman ${item}`}
+												aria-current={currentPage === item ? "page" : undefined}
+												className={`grid h-9 min-w-9 place-items-center rounded-lg border px-3 text-xs font-extrabold transition-colors ${
+													currentPage === item
+														? "border-[#2C3E50] bg-[#2C3E50] text-white"
+														: "border-[#E2E7E9] bg-white text-[#34495E] hover:bg-[#F3F5F6]"
+												}`}
+											>
+												{item}
+											</Link>
+										),
 									)}
 
 									{currentPage < totalPages ? (
 										<Link
-											href={`/jobs?page=${currentPage + 1}`}
-											className="inline-flex items-center gap-1 rounded-xl border border-[#E2E7E9] bg-white px-3 py-2 text-xs font-bold text-[#34495E] transition-colors hover:bg-[#F3F5F6]"
+											href={`/lowongan?page=${currentPage + 1}`}
+											aria-label="Halaman selanjutnya"
+											className="inline-flex h-9 items-center gap-1 rounded-lg border border-[#E2E7E9] bg-white px-3 text-xs font-bold text-[#34495E] transition-colors hover:bg-[#F3F5F6]"
 										>
-											Selanjutnya <ChevronRight size={14} />
+											<span className="hidden sm:inline">Selanjutnya</span>
+											<ChevronRight size={14} />
 										</Link>
 									) : (
-										<span className="inline-flex items-center gap-1 rounded-xl border border-[#E2E7E9] bg-[#F7F9FA] px-3 py-2 text-xs font-bold text-[#BDC3C3] cursor-not-allowed">
-											Selanjutnya <ChevronRight size={14} />
+										<span
+											aria-disabled="true"
+											className="inline-flex h-9 cursor-not-allowed items-center gap-1 rounded-lg border border-[#E2E7E9] bg-[#F7F9FA] px-3 text-xs font-bold text-[#BDC3C3]"
+										>
+											<span className="hidden sm:inline">Selanjutnya</span>
+											<ChevronRight size={14} />
 										</span>
 									)}
 								</div>
