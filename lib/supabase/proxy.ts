@@ -2,19 +2,20 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
-
-  // If the env vars are not set, skip proxy check. You can remove this
-  // once you setup the project.
-  if (!hasEnvVars) {
-    return supabaseResponse;
+function dashboardForRole(role: string | undefined) {
+  if (role === "job_seeker") return "/dashboard/pencari-kerja";
+  if (role === "employer") return "/dashboard/pelaku-usaha";
+  if (role === "admin" || role === "super_admin" || role === "fraud_admin") {
+    return "/admin";
   }
+  return null;
+}
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  if (!hasEnvVars) return supabaseResponse;
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -24,12 +25,8 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           );
@@ -38,39 +35,58 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
+  // Refresh and validate the Supabase session before making routing decisions.
   const { data } = await supabase.auth.getClaims();
-  const user = data?.claims;
+  const claims = data?.claims;
+  const userId = typeof claims?.sub === "string" ? claims.sub : null;
+  const pathname = request.nextUrl.pathname;
 
-  if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    return NextResponse.redirect(url);
+  // A signed-in user should not return to Login/Register, including via browser Back.
+  const isAuthEntryRoute =
+    pathname === "/auth/login" ||
+    pathname === "/auth/admin-login" ||
+    pathname === "/auth/sign-up" ||
+    pathname.startsWith("/auth/sign-up/") ||
+    pathname === "/auth/sign-up-success";
+
+  if (userId && isAuthEntryRoute) {
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const destination = dashboardForRole(roleRow?.role);
+    if (destination) {
+      const url = request.nextUrl.clone();
+      url.pathname = destination;
+      url.search = "";
+      const redirectResponse = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie);
+      });
+      return redirectResponse;
+    }
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
+  // Landing page and published job pages are public. All dashboards and other
+  // application pages still require a valid Supabase session.
+  const isPublicRoute =
+    pathname === "/" ||
+    pathname === "/lowongan" ||
+    pathname.startsWith("/lowongan/") ||
+    pathname.startsWith("/auth/");
+
+  if (!userId && !isPublicRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    url.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
+  }
 
   return supabaseResponse;
 }

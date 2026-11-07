@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ApplicationStatusControl } from "@/components/application-status-control";
-import { ArrowLeft, Download, FileText, MapPin, Phone, Sparkles, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, FileText, MapPin, Phone, Sparkles, Users } from "lucide-react";
 
 export const instant = false;
 
@@ -79,6 +79,16 @@ export default async function EmployerJobApplicantsPage({ params }: PageProps) {
           </div>
         </header>
 
+        {countByStatus("accepted") > 0 && (
+          <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#CFE2D5] bg-[#F0F7F2] px-4 py-3 text-[#355E45]">
+            <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-extrabold">Kandidat sudah diterima</p>
+              <p className="mt-1 text-[11px] leading-5 text-[#557562]">Seluruh pelamar lain pada lowongan ini otomatis berstatus Ditolak. Status seleksi yang sudah final tidak dapat diubah kembali.</p>
+            </div>
+          </div>
+        )}
+
         <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
           {[["Masuk",countByStatus("submitted")],["Ditinjau",countByStatus("reviewing")],["Wawancara",countByStatus("interview")],["Diterima",countByStatus("accepted")],["Ditolak",countByStatus("rejected")]].map(([label,value])=><div key={String(label)} className="rounded-xl border border-[#E2E7E9] bg-white p-3"><p className="text-[10px] font-semibold text-[#8A969D]">{label}</p><p className="mt-1 text-xl font-extrabold">{value}</p></div>)}
         </div>
@@ -104,7 +114,7 @@ export default async function EmployerJobApplicantsPage({ params }: PageProps) {
                   {preference?.summary && <p className="mt-3 max-w-3xl text-xs leading-6 text-[#667681]">{preference.summary}</p>}
                 </div>
               </div>
-              <div className="shrink-0 lg:w-[190px]"><ApplicationStatusControl applicationId={application.id} currentStatus={application.status}/></div>
+              <div className="shrink-0 lg:w-[190px]"><ApplicationStatusControl key={`${application.id}:${application.status}`} applicationId={application.id} currentStatus={application.status}/></div>
             </div>
             <div className="mx-5 mb-4 flex flex-col gap-3 rounded-xl border border-[#DCE5E8] bg-[#F7F9FA] p-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">

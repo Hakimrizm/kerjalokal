@@ -26,7 +26,7 @@ export default async function PublicJobDetailPage({params}: PageProps) {
   return (
     <main className="min-h-screen bg-[#F3F5F6] px-4 py-7 text-[#2C3E50] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-6 flex items-center justify-between gap-3"><Link href="/lowongan" className="inline-flex items-center gap-2 text-xs font-bold text-[#7F8C8D] hover:text-[#2C3E50]"><ArrowLeft size={15}/> Semua lowongan</Link><Link href="/" className="text-sm font-extrabold">kerja<span className="text-[#7F8C8D]">lokal</span></Link></header>
+        <header className="mb-6 flex items-center justify-between gap-3"><Link href="/dashboard" className="inline-flex items-center gap-2 text-xs font-bold text-[#7F8C8D] hover:text-[#2C3E50]"><ArrowLeft size={15}/> Back</Link><Link href="/" className="text-sm font-extrabold">kerja<span className="text-[#7F8C8D]">lokal</span></Link></header>
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
           <article className="overflow-hidden rounded-2xl border border-[#E2E7E9] bg-white shadow-sm">
             <div className="bg-[#2C3E50] p-6 text-white sm:p-8"><span className="badge badge-outline border-white/30 text-[10px] text-white">{job.category}</span><h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">{job.title}</h1><p className="mt-2 text-sm text-white/70">{employer?.business_name ?? "Usaha lokal"} · {job.employment_type}</p><div className="mt-5 flex flex-wrap gap-4 text-xs text-white/70"><span className="inline-flex items-center gap-1.5"><MapPin size={14}/>{job.district}, {job.city}</span><span className="inline-flex items-center gap-1.5"><Users size={14}/>{job.vacancies} posisi</span></div></div>

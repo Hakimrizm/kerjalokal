@@ -23,8 +23,8 @@ import {
 	X,
 } from "lucide-react";
 
-type Job = {
-	id: number;
+export type LandingJob = {
+	id: string;
 	title: string;
 	company: string;
 	district: string;
@@ -34,53 +34,6 @@ type Job = {
 	type: string;
 	initials: string;
 };
-
-const sampleJobs: Job[] = [
-	{
-		id: 1,
-		title: "Staff Operasional Toko",
-		company: "Mitra Usaha Lokal",
-		district: "Rancasari",
-		location: "Kecamatan Rancasari, Bandung",
-		salary: "Rp2,5–3,2 juta",
-		category: "Operasional",
-		type: "Full-time",
-		initials: "MU",
-	},
-	{
-		id: 2,
-		title: "Kasir & Pelayanan",
-		company: "Kedai Pagi",
-		district: "Buahbatu",
-		location: "Kecamatan Buahbatu, Bandung",
-		salary: "Rp2,3–2,8 juta",
-		category: "Retail & F&B",
-		type: "Full-time",
-		initials: "KP",
-	},
-	{
-		id: 3,
-		title: "Admin Media Sosial",
-		company: "Ruang Kreatif UMKM",
-		district: "Coblong",
-		location: "Kecamatan Coblong, Bandung",
-		salary: "Rp2,8–3,5 juta",
-		category: "Administrasi",
-		type: "Part-time",
-		initials: "RK",
-	},
-	{
-		id: 4,
-		title: "Teknisi Bengkel",
-		company: "Bengkel Sahabat",
-		district: "Antapani",
-		location: "Kecamatan Antapani, Bandung",
-		salary: "Rp3–4 juta",
-		category: "Teknik",
-		type: "Full-time",
-		initials: "BS",
-	},
-];
 
 const navItems = [
 	{ label: "Cari Lowongan", href: "#lowongan" },
@@ -116,7 +69,7 @@ const features = [
 	},
 ];
 
-export function LandingPage() {
+export function LandingPage({ jobs }: { jobs: LandingJob[] }) {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const [keyword, setKeyword] = useState("");
 	const [district, setDistrict] = useState("all");
@@ -126,7 +79,7 @@ export function LandingPage() {
 	const filteredJobs = useMemo(() => {
 		const normalizedKeyword = appliedKeyword.toLowerCase();
 
-		return sampleJobs.filter((job) => {
+		return jobs.filter((job) => {
 			const matchesKeyword =
 				!normalizedKeyword ||
 				`${job.title} ${job.company} ${job.category} ${job.location}`
@@ -137,7 +90,7 @@ export function LandingPage() {
 
 			return matchesKeyword && matchesDistrict;
 		});
-	}, [appliedKeyword, appliedDistrict]);
+	}, [jobs, appliedKeyword, appliedDistrict]);
 
 	function handleSearch(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -213,18 +166,10 @@ export function LandingPage() {
 						{/* Desktop buttons */}
 						<div className="hidden items-center gap-2 xl:flex">
 							<Link
-								href="/auth/login"
-								className="btn btn-ghost rounded-full px-5 text-sm font-semibold text-[#34495E] hover:bg-white"
+								href="/dashboard"
+								className="btn btn-primary rounded-full border-0 px-6 text-sm font-semibold text-white shadow-md shadow-[#2C3E50]/15 transition-all hover:-translate-y-0.5 hover:bg-[#34495E]"
 							>
-								Masuk
-							</Link>
-
-							<Link
-								href="/auth/sign-up"
-								className="btn btn-primary rounded-full border-0 px-5 text-sm font-semibold text-white shadow-md shadow-[#2C3E50]/15 transition-all hover:-translate-y-0.5 hover:bg-[#34495E]"
-							>
-								Daftar Gratis
-								<ArrowUpRight size={16} />
+								Dashboard <ArrowRight size={16} />
 							</Link>
 						</div>
 
@@ -265,23 +210,13 @@ export function LandingPage() {
 								</ul>
 							</nav>
 
-							{/* Mobile action buttons */}
-							<div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#2C3E50]/10 pt-4">
+							<div className="mt-4 border-t border-[#2C3E50]/10 pt-4">
 								<Link
-									href="/auth/login"
+									href="/dashboard"
 									onClick={closeMobileMenu}
-									className="btn btn-outline btn-primary min-h-11 rounded-full border-[#2C3E50] text-sm font-semibold text-[#2C3E50] hover:bg-[#2C3E50] hover:text-white"
+									className="btn btn-primary min-h-11 w-full rounded-full border-0 bg-[#2C3E50] text-sm font-semibold text-white hover:bg-[#34495E]"
 								>
-									Masuk
-								</Link>
-
-								<Link
-									href="/auth/sign-up"
-									onClick={closeMobileMenu}
-									className="btn btn-primary min-h-11 rounded-full border-0 bg-[#2C3E50] text-sm font-semibold text-white hover:bg-[#34495E]"
-								>
-									Daftar Gratis
-									<ArrowUpRight size={15} />
+									Dashboard <ArrowRight size={15} />
 								</Link>
 							</div>
 
@@ -330,10 +265,10 @@ export function LandingPage() {
 								Cari Lowongan <ArrowRight size={17} />
 							</Link>
 							<Link
-								href="/auth/sign-up"
+								href="/dashboard"
 								className="btn btn-outline h-[52px] min-h-[52px] rounded-full border-white/35 px-7 text-sm font-bold text-white hover:border-white hover:bg-white/10 hover:text-white"
 							>
-								Buat CV Gratis <FileText size={17} />
+								Buka Dashboard <ArrowRight size={17} />
 							</Link>
 						</div>
 
@@ -548,10 +483,9 @@ export function LandingPage() {
 									className="select select-bordered h-12 min-h-12 w-full rounded-xl border-[#BDC3C7]/80 bg-[#ECF0F1]/55 pl-11 pr-9 text-sm text-primary focus:border-primary focus:outline-none"
 								>
 									<option value="all">Semua kecamatan</option>
-									<option value="Rancasari">Rancasari</option>
-									<option value="Buahbatu">Buahbatu</option>
-									<option value="Coblong">Coblong</option>
-									<option value="Antapani">Antapani</option>
+									{Array.from(new Set(jobs.map((job) => job.district).filter(Boolean))).sort().map((item) => (
+										<option key={item} value={item}>{item}</option>
+									))}
 								</select>
 							</div>
 						</label>
@@ -642,15 +576,15 @@ export function LandingPage() {
 							</p>
 						</div>
 						<span className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/10 bg-white px-4 py-2.5 text-xs font-bold text-primary">
-							<MapPin size={15} /> Contoh wilayah: Bandung
+							<MapPin size={15} /> Wilayah lowongan aktif
 						</span>
 					</div>
 
 					<div className="mt-9 flex flex-wrap items-center justify-between gap-3">
 						<p className="text-xs font-semibold text-[#7F8C8D]">
 							{appliedKeyword || appliedDistrict !== "all"
-								? `${filteredJobs.length} contoh lowongan ditemukan`
-								: "Pilihan contoh lowongan"}
+								? `${filteredJobs.length} lowongan ditemukan`
+								: "Lowongan terbaru dari database"}
 						</p>
 						{(appliedKeyword || appliedDistrict !== "all") && (
 							<button
@@ -675,7 +609,7 @@ export function LandingPage() {
 											{job.initials}
 										</span>
 										<span className="badge badge-outline border-[#7F8C8D]/30 text-[10px] font-bold text-[#7F8C8D]">
-											Contoh
+											Tayang
 										</span>
 									</div>
 									<div>
@@ -703,15 +637,12 @@ export function LandingPage() {
 											{job.type}
 										</p>
 									</div>
-									<div className="card-actions items-center justify-between">
-										<span className="text-[10px] font-semibold text-[#7F8C8D]">
-											Ilustrasi lowongan
-										</span>
+									<div className="card-actions items-center justify-end">
 										<Link
-											href="/auth/sign-up"
+											href={`/lowongan/${job.id}`}
 											className="btn btn-ghost btn-sm rounded-full px-2 text-xs font-bold text-primary hover:bg-[#ECF0F1]"
 										>
-											Daftar untuk melamar <ChevronRight size={14} />
+											Lihat detail <ChevronRight size={14} />
 										</Link>
 									</div>
 								</div>
@@ -723,10 +654,10 @@ export function LandingPage() {
 						<div className="mt-5 rounded-3xl border border-dashed border-primary/20 bg-white px-6 py-14 text-center">
 							<Search className="mx-auto text-[#7F8C8D]" size={30} />
 							<h3 className="mt-4 text-lg font-extrabold text-primary">
-								Belum ada contoh yang cocok
+								{jobs.length === 0 ? "Belum ada lowongan yang tayang" : "Belum ada lowongan yang cocok"}
 							</h3>
 							<p className="mt-2 text-sm text-[#7F8C8D]">
-								Coba kata kunci atau wilayah lainnya.
+								{jobs.length === 0 ? "Lowongan yang diterbitkan pelaku usaha akan muncul di sini." : "Coba kata kunci atau wilayah lainnya."}
 							</p>
 							<button
 								type="button"
@@ -827,10 +758,10 @@ export function LandingPage() {
 							</div>
 							<div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
 								<Link
-									href="/auth/sign-up/employer"
+									href="/dashboard"
 									className="btn h-12 rounded-full border-0 bg-[#ECF0F1] px-7 font-bold text-primary hover:bg-white"
 								>
-									Daftar sebagai pelaku usaha <ArrowUpRight size={16} />
+									Dashboard <ArrowUpRight size={16} />
 								</Link>
 								<Link
 									href="#cara-kerja"
@@ -897,27 +828,8 @@ export function LandingPage() {
 							</h3>
 							<ul className="mt-5 space-y-3 text-sm text-white/70">
 								<li>
-									<Link
-										href="/auth/login"
-										className="transition hover:text-white"
-									>
-										Masuk
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/auth/sign-up"
-										className="transition hover:text-white"
-									>
-										Daftar pencari kerja
-									</Link>
-								</li>
-								<li>
-									<Link
-										href="/auth/sign-up/employer"
-										className="transition hover:text-white"
-									>
-										Daftar pelaku usaha
+									<Link href="/dashboard" className="transition hover:text-white">
+										Buka Dashboard
 									</Link>
 								</li>
 							</ul>
