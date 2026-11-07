@@ -10,6 +10,17 @@ function dateLabel(value?: string | null) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(value));
 }
+function dateTimeLabel(value?: string | null) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(value));
+}
 
 export default async function AdminBusinessDetailPage({ params }: PageProps) {
   const { userId } = await params;
@@ -17,10 +28,11 @@ export default async function AdminBusinessDetailPage({ params }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: roleRow } = await supabase.from("user_roles").select("role").eq("user_id", user!.id).maybeSingle();
   const role = roleRow?.role === "fraud_admin" ? "super_admin" : roleRow?.role;
-  const [{ data: business }, { data: contact }, { data: documents }] = await Promise.all([
+  const [{ data: business }, { data: contact }, { data: documents }, { data: history }] = await Promise.all([
     supabase.from("employer_profiles").select("*").eq("user_id", userId).maybeSingle(),
     supabase.from("employer_contacts").select("*").eq("user_id", userId).maybeSingle(),
     supabase.from("employer_verification_documents").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("employer_verification_history").select("id,action,status,note,actor_id,created_at").eq("employer_id", userId).order("created_at", { ascending: false }).limit(20),
   ]);
   if (!business) notFound();
 
@@ -32,7 +44,14 @@ export default async function AdminBusinessDetailPage({ params }: PageProps) {
     ? await supabase.storage.from("business-logos").createSignedUrl(business.logo_path, 600)
     : { data: null };
 
-  const statusLabel = business.verification_status === "verified" ? "Terverifikasi" : business.verification_status === "rejected" ? "Ditolak" : "Menunggu pemeriksaan";
+  const statusLabel =
+    business.verification_status === "verified"
+      ? "Terverifikasi"
+      : business.verification_status === "rejected"
+        ? "Perlu perbaikan"
+        : (business.resubmission_count ?? 0) > 0
+          ? "Menunggu verifikasi ulang"
+          : "Menunggu pemeriksaan";
   return (
     <div className="space-y-6">
       <Link href="/admin/verifikasi-usaha" className="inline-flex items-center gap-2 text-xs font-bold text-[#7F8C8D] hover:text-[#2C3E50]"><ArrowLeft size={15}/> Kembali ke daftar usaha</Link>
@@ -77,6 +96,53 @@ export default async function AdminBusinessDetailPage({ params }: PageProps) {
               </div>
             ))}</div> : <div className="mt-4 rounded-xl bg-[#FFF8E8] p-4 text-xs leading-5 text-[#80632C]">Pelaku usaha belum mengunggah dokumen legalitas. Admin perlu memeriksa keberadaan usaha melalui informasi dan bukti pendukung lain sebelum memberi rekomendasi.</div>}
           </section>
+
+          {(history ?? []).length > 0 && (
+            <section className="rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-extrabold">Riwayat verifikasi</h2>
+                <span className="badge badge-outline border-[#DCE3E6] text-[10px] text-[#7F8C8D]">
+                  {(history ?? []).length} aktivitas
+                </span>
+              </div>
+              <div className="mt-4 space-y-3">
+                {(history ?? []).map((item) => {
+                  const actionLabel =
+                    item.action === "resubmitted"
+                      ? "Pengajuan verifikasi ulang"
+                      : item.action === "approved"
+                        ? "Verifikasi disetujui"
+                        : "Verifikasi ditolak";
+                  const tone =
+                    item.action === "approved"
+                      ? "bg-[#EFF8F2] text-[#347052]"
+                      : item.action === "rejected"
+                        ? "bg-[#FFF5F5] text-[#A34E4E]"
+                        : "bg-[#F1F5F8] text-[#34495E]";
+                  return (
+                    <div key={String(item.id)} className="rounded-xl border border-[#EEF1F2] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${tone}`}>
+                          {actionLabel}
+                        </span>
+                        <span className="text-[10px] text-[#9AA5AB]">
+                          {dateLabel(item.created_at)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[10px] text-[#8A969D]">
+                        Oleh: {item.action === "resubmitted" ? "Pelaku usaha" : "Admin / Super Admin"}
+                      </p>
+                      {item.note && (
+                        <p className="mt-2 whitespace-pre-line break-words text-xs leading-5 text-[#53616D]">
+                          {item.note}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-24">
@@ -87,6 +153,8 @@ export default async function AdminBusinessDetailPage({ params }: PageProps) {
             recommendation={business.review_recommendation}
             reviewerNotes={business.reviewer_notes}
             decisionNotes={business.decision_notes}
+            resubmissionCount={business.resubmission_count ?? 0}
+            resubmittedAtLabel={business.resubmitted_at ? dateTimeLabel(business.resubmitted_at) : undefined}
           />
           <section className="rounded-2xl border border-[#E2E7E9] bg-[#F8FAFA] p-4">
             <p className="text-xs font-extrabold text-[#34495E]">Panduan pemeriksaan</p>

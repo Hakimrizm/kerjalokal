@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 import { IndonesiaRegionSelect, type IndonesiaRegionValue } from "@/components/indonesia-region-select";
 import { notify } from "@/lib/notify";
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
@@ -23,6 +24,7 @@ import {
   MapPinned,
   Phone,
   Save,
+  Send,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -48,6 +50,8 @@ type EmployerProfile = {
   facebook_url: string | null;
   verification_status: "pending" | "verified" | "rejected";
   decision_notes?: string | null;
+  resubmission_count?: number | null;
+  resubmitted_at?: string | null;
   updated_at?: string | null;
 };
 
@@ -190,9 +194,10 @@ function Field({
   );
 }
 
-function statusLabel(status: string) {
+function statusLabel(status: string, resubmissionCount = 0) {
   if (status === "verified") return "Terverifikasi";
   if (status === "rejected") return "Perlu perbaikan";
+  if (resubmissionCount > 0) return "Menunggu verifikasi ulang";
   return "Menunggu pemeriksaan";
 }
 
@@ -220,10 +225,13 @@ export function EmployerProfileManager({
   initialLogoUrl: string | null;
   initialDocuments: EmployerDocument[];
 }) {
+  const router = useRouter();
   const [form, setForm] = useState<FormState>(() => toForm(initialProfile, initialContact));
+  const [savedForm, setSavedForm] = useState<FormState>(() => toForm(initialProfile, initialContact));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [resubmitting, setResubmitting] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -242,6 +250,11 @@ export function EmployerProfileManager({
       village: form.village,
     }),
     [form.province, form.city, form.district, form.village],
+  );
+
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(savedForm) || Boolean(logoFile) || Boolean(newDocumentFile),
+    [form, savedForm, logoFile, newDocumentFile],
   );
 
   const initials = form.business_name
@@ -483,6 +496,11 @@ export function EmployerProfileManager({
 
       if (contactError) throw contactError;
 
+      setSavedForm({
+        ...form,
+        logo_path: nextLogoPath ?? "",
+      });
+
       notify("success", "Profil usaha berhasil diperbarui.");
     } catch (caught) {
       if (uploadedLogoPath && !profileSaved) {
@@ -499,6 +517,47 @@ export function EmployerProfileManager({
       notify("error", visibleMessage);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleResubmitVerification() {
+    if (hasUnsavedChanges) {
+      const message = "Simpan perubahan profil dan unggah dokumen baru terlebih dahulu sebelum mengajukan verifikasi ulang.";
+      setSubmitError(message);
+      notify("error", message);
+      return;
+    }
+
+    if (saving || documentBusy || resubmitting) return;
+
+    const confirmed = window.confirm(
+      "Ajukan kembali verifikasi usaha? Data dan dokumen terbaru akan dikirim ke Admin untuk diperiksa ulang.",
+    );
+    if (!confirmed) return;
+
+    setResubmitting(true);
+    setSubmitError("");
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.rpc("employer_resubmit_verification");
+
+      if (error) throw new Error(error.message);
+
+      notify(
+        "success",
+        "Pengajuan verifikasi ulang berhasil dikirim. Admin akan memeriksa kembali data usaha.",
+      );
+      router.refresh();
+    } catch (caught) {
+      const message =
+        caught instanceof Error
+          ? caught.message
+          : "Pengajuan verifikasi ulang belum berhasil dikirim.";
+      setSubmitError(message);
+      notify("error", message);
+    } finally {
+      setResubmitting(false);
     }
   }
 
@@ -658,7 +717,7 @@ export function EmployerProfileManager({
             </div>
             <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[10px] font-bold ${verificationTone}`}>
               {initialProfile.verification_status === "verified" ? <BadgeCheck size={14} /> : <Clock3 size={14} />}
-              {statusLabel(initialProfile.verification_status)}
+              {statusLabel(initialProfile.verification_status, initialProfile.resubmission_count ?? 0)}
             </span>
           </div>
         </div>
@@ -918,14 +977,59 @@ export function EmployerProfileManager({
               {initialProfile.verification_status === "verified" ? <BadgeCheck size={18} /> : <ShieldCheck size={18} />}
               <h2 className="text-sm font-extrabold">Status verifikasi</h2>
             </div>
-            <p className="mt-3 text-base font-extrabold">{statusLabel(initialProfile.verification_status)}</p>
+            <p className="mt-3 text-base font-extrabold">
+              {statusLabel(initialProfile.verification_status, initialProfile.resubmission_count ?? 0)}
+            </p>
             <p className="mt-2 text-[11px] leading-5 opacity-80">
               {initialProfile.verification_status === "verified"
                 ? "Usaha kamu sudah terverifikasi dan dapat menggunakan fitur rekrutmen sesuai ketentuan."
                 : initialProfile.verification_status === "rejected"
                   ? initialProfile.decision_notes || "Periksa kembali data dan dokumen usaha, lalu perbarui informasi yang diperlukan."
-                  : "Data usaha sedang diperiksa. Keputusan akhir verifikasi diberikan oleh Super Admin."}
+                  : (initialProfile.resubmission_count ?? 0) > 0
+                    ? "Perbaikan sudah diajukan kembali. Admin sedang memeriksa data dan dokumen terbaru."
+                    : "Data usaha sedang diperiksa. Keputusan akhir verifikasi diberikan oleh Super Admin."}
             </p>
+
+            {initialProfile.verification_status === "pending" &&
+              (initialProfile.resubmission_count ?? 0) > 0 &&
+              initialProfile.decision_notes && (
+                <div className="mt-3 rounded-xl border border-[#EADCB9] bg-white/70 p-3">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide">
+                    Catatan penolakan sebelumnya
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-[11px] leading-5">
+                    {initialProfile.decision_notes}
+                  </p>
+                </div>
+              )}
+
+            {initialProfile.verification_status === "rejected" && (
+              <div className="mt-4 rounded-xl border border-[#E8CACA] bg-white/75 p-3">
+                <p className="text-[11px] leading-5">
+                  Perbaiki data atau dokumen sesuai catatan di atas. Simpan seluruh perubahan terlebih dahulu, kemudian ajukan kembali agar Admin dapat melakukan verifikasi ulang.
+                </p>
+
+                {hasUnsavedChanges && (
+                  <p className="mt-2 text-[10px] font-semibold">
+                    Masih ada perubahan yang belum disimpan. Tombol pengajuan akan aktif setelah profil disimpan.
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => void handleResubmitVerification()}
+                  disabled={saving || documentBusy || resubmitting || hasUnsavedChanges}
+                  className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2C3E50] px-4 text-xs font-extrabold text-white shadow-sm transition hover:bg-[#34495E] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {resubmitting ? (
+                    <LoaderCircle size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                  {resubmitting ? "Mengirim pengajuan..." : "Ajukan Verifikasi Ulang"}
+                </button>
+              </div>
+            )}
           </section>
 
           <section className="rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm">
