@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ApplicationStatusControl } from "@/components/application-status-control";
-import { ArrowLeft, MapPin, Phone, Sparkles, Users } from "lucide-react";
+import { ArrowLeft, Download, FileText, MapPin, Phone, Sparkles, Users } from "lucide-react";
 
 export const instant = false;
 
@@ -24,11 +24,19 @@ export default async function EmployerJobApplicantsPage({ params }: PageProps) {
   if (!job) notFound();
 
   const { data: applications } = await supabase.from("job_applications")
-    .select("id,applicant_id,cover_letter,status,applied_at")
+    .select("id,applicant_id,cover_letter,status,applied_at,cv_path,cv_file_name,cv_generated_at")
     .eq("job_id", jobId)
     .order("applied_at", { ascending: false });
 
-  const rows = applications ?? [];
+  const rows = await Promise.all((applications ?? []).map(async (application) => {
+    if (!application.cv_path) return { ...application, cv_signed_url: null as string | null };
+    const { data: signedFile } = await supabase.storage
+      .from("job-seeker-cvs")
+      .createSignedUrl(application.cv_path, 60 * 60, {
+        download: application.cv_file_name || true,
+      });
+    return { ...application, cv_signed_url: signedFile?.signedUrl ?? null };
+  }));
   const applicantIds = [...new Set(rows.map((item) => item.applicant_id))];
 
   const [profilesResult, preferencesResult, skillsResult, educationResult, experienceResult] = applicantIds.length
@@ -97,6 +105,22 @@ export default async function EmployerJobApplicantsPage({ params }: PageProps) {
                 </div>
               </div>
               <div className="shrink-0 lg:w-[190px]"><ApplicationStatusControl applicationId={application.id} currentStatus={application.status}/></div>
+            </div>
+            <div className="mx-5 mb-4 flex flex-col gap-3 rounded-xl border border-[#DCE5E8] bg-[#F7F9FA] p-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white text-[#34495E]"><FileText size={19}/></span>
+                <div className="min-w-0">
+                  <p className="text-xs font-extrabold text-[#34495E]">{application.cv_path ? "CV ATS terlampir" : "Belum ada CV terlampir"}</p>
+                  <p className="mt-0.5 truncate text-[10px] text-[#8A969D]">{application.cv_file_name || (application.cv_path ? "Dokumen CV PDF" : "Lamaran sebelum fitur CV otomatis")}</p>
+                </div>
+              </div>
+              {application.cv_signed_url ? (
+                <a href={application.cv_signed_url} target="_blank" rel="noreferrer" download={application.cv_file_name || "CV-Pelamar.pdf"} className="btn btn-sm min-h-9 shrink-0 rounded-lg border-0 bg-[#2C3E50] px-4 text-[11px] font-bold text-white hover:bg-[#34495E]">
+                  <Download size={14}/> Unduh CV
+                </a>
+              ) : (
+                <span className="text-[10px] text-[#9AA5AB]">{application.cv_path ? "Akses dokumen belum aktif." : "Lamaran ini dikirim sebelum fitur CV otomatis tersedia."}</span>
+              )}
             </div>
             <div className="border-t border-[#EEF1F2] bg-[#FBFCFC] px-5 py-4 sm:px-6">
               <details className="group">

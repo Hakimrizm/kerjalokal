@@ -215,6 +215,14 @@ export default async function JobSeekerDashboardPage() {
               <ChevronRight size={15} className="ml-auto text-[#AAB4BA]" />
             </Link>
             <Link
+              href="/dashboard/pencari-kerja/cv"
+              className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
+            >
+              <FileUser size={18} />
+              CV Saya
+              <ChevronRight size={15} className="ml-auto text-[#AAB4BA]" />
+            </Link>
+            <Link
               href="/lowongan"
               className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
             >

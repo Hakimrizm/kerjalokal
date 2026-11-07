@@ -8,6 +8,7 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   GraduationCap,
+  FileUser,
   Link2,
   MapPin,
   Pencil,
@@ -162,6 +163,19 @@ export default async function JobSeekerProfilePage() {
               <p className="mt-6 max-w-3xl text-sm leading-7 text-[#667681]">{jobProfile.summary}</p>
             )}
           </div>
+        </section>
+
+        <section className="mt-5 flex flex-col gap-4 rounded-2xl border border-[#DCE5E8] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><FileUser size={20}/></span>
+            <div>
+              <h2 className="text-sm font-extrabold text-[#2C3E50]">CV Profesional Otomatis</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-[#7F8C8D]">Data profilmu sudah dapat disusun menjadi CV berformat ATS. Lihat pratinjau atau unduh PDF untuk digunakan melamar pekerjaan.</p>
+            </div>
+          </div>
+          <Link href="/dashboard/pencari-kerja/cv" className="btn min-h-10 shrink-0 rounded-xl border-0 bg-[#2C3E50] px-4 text-xs font-bold text-white hover:bg-[#34495E]">
+            Preview CV <ArrowRight size={14}/>
+          </Link>
         </section>
 
         <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
