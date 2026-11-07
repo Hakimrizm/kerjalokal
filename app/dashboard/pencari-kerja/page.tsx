@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { JobSeekerDashboardSignOut } from "@/components/jobseeker-dashboard-signout";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -84,13 +83,6 @@ export default async function JobSeekerDashboardPage() {
     user.user_metadata?.full_name ||
     "Pencari Kerja";
   const firstName = name.trim().split(/\s+/)[0] || "Teman";
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part: string) => part[0])
-    .join("")
-    .toUpperCase();
 
   const location = [profile?.village, profile?.district, profile?.city]
     .filter(Boolean)
@@ -117,12 +109,6 @@ export default async function JobSeekerDashboardPage() {
   const profileCompletion = Math.round(
     (completenessChecks.filter(Boolean).length / completenessChecks.length) * 100,
   );
-
-  const { data: signedPhoto } = profile?.photo_path
-    ? await supabase.storage
-        .from("profile-photos")
-        .createSignedUrl(profile.photo_path, 60 * 60)
-    : { data: null };
 
   const salaryMin = formatSalary(jobProfile?.expected_salary_min);
   const salaryMax = formatSalary(jobProfile?.expected_salary_max);
@@ -169,149 +155,7 @@ export default async function JobSeekerDashboardPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#F3F5F6] text-[#2C3E50]">
-      <div className="mx-auto flex min-h-screen max-w-[1600px]">
-        {/* Desktop sidebar */}
-        <aside className="sticky top-0 hidden h-screen w-[258px] shrink-0 flex-col border-r border-[#DCE2E5] bg-white px-5 py-7 lg:flex">
-          <Link href="/" className="mb-10 flex items-center gap-3 px-2">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#2C3E50] text-white shadow-lg shadow-[#2C3E50]/10">
-              <BriefcaseBusiness size={21} />
-            </span>
-            <span>
-              <span className="block text-[19px] font-extrabold leading-none tracking-tight">
-                kerja<span className="text-[#7F8C8D]">lokal</span>
-              </span>
-              <span className="mt-1 block text-[9px] font-bold uppercase tracking-[0.14em] text-[#8A969D]">
-                Peluang dekat, masa depan hebat
-              </span>
-            </span>
-          </Link>
-
-          <p className="mb-3 px-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#9AA5AB]">
-            Menu utama
-          </p>
-          <nav className="space-y-1">
-            <Link
-              href="/dashboard/pencari-kerja"
-              className="flex items-center gap-3 rounded-xl bg-[#2C3E50] px-3.5 py-3 text-sm font-bold text-white shadow-md shadow-[#2C3E50]/10"
-            >
-              <LayoutDashboard size={18} />
-              Ringkasan
-            </Link>
-            <Link
-              href="/dashboard/pencari-kerja/profil"
-              className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
-            >
-              <UserRound size={18} />
-              Profil Saya
-              <ChevronRight size={15} className="ml-auto text-[#AAB4BA]" />
-            </Link>
-            <Link
-              href="/dashboard/pencari-kerja/lamaran"
-              className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
-            >
-              <BriefcaseBusiness size={18} />
-              Lamaran Saya
-              <ChevronRight size={15} className="ml-auto text-[#AAB4BA]" />
-            </Link>
-            <Link
-              href="/dashboard/pencari-kerja/cv"
-              className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
-            >
-              <FileUser size={18} />
-              CV Saya
-              <ChevronRight size={15} className="ml-auto text-[#AAB4BA]" />
-            </Link>
-            <Link
-              href="/lowongan"
-              className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
-            >
-              <Search size={18} />
-              Cari Lowongan
-              <ArrowUpRight size={14} className="ml-auto text-[#AAB4BA]" />
-            </Link>
-          </nav>
-
-          <div className="mt-auto rounded-2xl bg-[#ECF0F1] p-4">
-            <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#34495E]">
-              <CheckCircle2 size={15} />
-              Profil pencari kerja
-            </div>
-            <p className="text-[11px] leading-5 text-[#7F8C8D]">
-              Perbarui informasi agar peluang yang kamu temukan semakin relevan.
-            </p>
-            <Link
-              href="/dashboard/pencari-kerja/profil"
-              className="mt-3 inline-flex items-center gap-1 text-xs font-extrabold text-[#2C3E50] hover:underline"
-            >
-              Kelola profil <ArrowRight size={13} />
-            </Link>
-          </div>
-        </aside>
-
-        <div className="min-w-0 flex-1">
-          {/* Top bar */}
-          <header className="sticky top-0 z-30 border-b border-[#DCE2E5] bg-white/90 backdrop-blur-xl">
-            <div className="flex min-h-[72px] items-center justify-between gap-3 px-4 sm:px-7 lg:px-9">
-              <div className="flex items-center gap-3 lg:hidden">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2C3E50] text-white">
-                  <BriefcaseBusiness size={19} />
-                </span>
-                <span className="text-lg font-extrabold tracking-tight">
-                  kerja<span className="text-[#7F8C8D]">lokal</span>
-                </span>
-              </div>
-              <div className="hidden lg:block">
-                <p className="text-xs font-semibold text-[#8A969D]">AREA PENCARI KERJA</p>
-                <p className="mt-0.5 text-sm font-bold text-[#34495E]">Dashboard</p>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-4">
-                <Link
-                  href="/dashboard/pencari-kerja/profil"
-                  className="hidden items-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-[#53616D] transition hover:bg-[#ECF0F1] sm:flex"
-                >
-                  <UserRound size={16} />
-                  Profil Saya
-                </Link>
-                <div className="hidden h-8 w-px bg-[#E3E8EA] sm:block" />
-                <div className="flex items-center gap-2.5">
-                  {signedPhoto?.signedUrl ? (
-                    <img
-                      src={signedPhoto.signedUrl}
-                      alt={`Foto profil ${name}`}
-                      className="h-9 w-9 rounded-full border border-[#DCE2E5] object-cover"
-                    />
-                  ) : (
-                    <span className="grid h-9 w-9 place-items-center rounded-full bg-[#DCE4E8] text-xs font-extrabold text-[#34495E]">
-                      {initials || "PK"}
-                    </span>
-                  )}
-                  <div className="hidden min-w-0 sm:block">
-                    <p className="max-w-[150px] truncate text-xs font-extrabold text-[#34495E]">{name}</p>
-                    <p className="text-[10px] text-[#8A969D]">Pencari Kerja</p>
-                  </div>
-                </div>
-                <JobSeekerDashboardSignOut />
-              </div>
-            </div>
-            {/* Mobile navigation */}
-            <nav className="flex gap-1 overflow-x-auto border-t border-[#EEF1F2] px-4 py-2 lg:hidden">
-              <Link href="/dashboard/pencari-kerja" className="whitespace-nowrap rounded-full bg-[#2C3E50] px-3.5 py-2 text-xs font-bold text-white">
-                Ringkasan
-              </Link>
-              <Link href="/dashboard/pencari-kerja/profil" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
-                Profil Saya
-              </Link>
-              <Link href="/dashboard/pencari-kerja/lamaran" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
-                Lamaran Saya
-              </Link>
-              <Link href="/lowongan" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
-                Cari Lowongan
-              </Link>
-            </nav>
-          </header>
-
-          <div className="mx-auto max-w-[1250px] px-4 py-6 sm:px-7 sm:py-8 lg:px-9 lg:py-9">
+    <div className="flex-1 w-full flex flex-col gap-12">
             {/* Welcome */}
             <section className="relative overflow-hidden rounded-[28px] bg-[#2C3E50] p-6 text-white shadow-xl shadow-[#2C3E50]/10 sm:p-8 lg:p-9">
               <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border border-white/10" />
@@ -617,14 +461,6 @@ export default async function JobSeekerDashboardPage() {
                 </section>
               </aside>
             </div>
-
-            <footer className="mt-9 flex flex-col items-center justify-between gap-2 border-t border-[#DCE2E5] py-5 text-[10px] text-[#9AA5AB] sm:flex-row">
-              <span>© {new Date().getFullYear()} KerjaLokal. Peluang dekat, masa depan hebat.</span>
-              <span className="inline-flex items-center gap-1.5"><Clock3 size={12} /> Profil dapat diperbarui kapan saja</span>
-            </footer>
           </div>
-        </div>
-      </div>
-    </main>
   );
 }

@@ -127,19 +127,14 @@ export default async function JobSeekerProfilePage() {
     : { data: null };
 
   return (
-    <main className="min-h-screen bg-[#F3F5F6] px-4 py-6 text-[#2C3E50] sm:px-6 sm:py-8 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <Link href="/dashboard/pencari-kerja" className="inline-flex items-center gap-2 text-xs font-bold text-[#667681] transition hover:text-[#2C3E50]">
-            <ArrowLeft size={16} /> Kembali ke Dashboard
-          </Link>
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#2C3E50] text-white"><BriefcaseBusiness size={18} /></span>
-            <span className="text-lg font-extrabold tracking-tight">kerja<span className="text-[#7F8C8D]">lokal</span></span>
-          </Link>
-        </header>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href="/dashboard/pencari-kerja" className="inline-flex items-center gap-2 text-xs font-bold text-[#667681] transition hover:text-[#2C3E50]">
+          <ArrowLeft size={16} /> Kembali ke Dashboard
+        </Link>
+      </div>
 
-        <section className="overflow-hidden rounded-[26px] bg-white shadow-sm">
+      <section className="overflow-hidden rounded-[26px] bg-white shadow-sm">
           <div className="h-28 bg-gradient-to-r from-[#2C3E50] via-[#34495E] to-[#7F8C8D] sm:h-36" />
           <div className="px-5 pb-6 sm:px-8">
             <div className="-mt-11 flex flex-col gap-4 sm:-mt-12 sm:flex-row sm:items-end sm:justify-between">
@@ -344,12 +339,6 @@ export default async function JobSeekerProfilePage() {
             </section>
           </aside>
         </div>
-
-        <footer className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-[#DCE2E5] py-5 text-[10px] text-[#9AA5AB]">
-          <span>© {new Date().getFullYear()} KerjaLokal</span>
-          <span>Perbarui profilmu kapan saja sesuai perkembangan karier.</span>
-        </footer>
       </div>
-    </main>
   );
 }
