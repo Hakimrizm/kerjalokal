@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
+  Download,
   FileText,
   LoaderCircle,
   Send,

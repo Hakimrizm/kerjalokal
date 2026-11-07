@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -122,16 +123,30 @@ export function JobSeekerCvPreview({ data }: { data: JobSeekerCvData }) {
               Tampilan dokumen · Format ATS satu kolom
             </div>
             <article className="mx-auto min-h-[1123px] max-w-[794px] px-7 py-9 text-[#202A30] sm:px-14 sm:py-14">
-              <header className="border-b-2 border-[#2C3E50] pb-5">
-                <h2 className="break-words text-3xl font-extrabold uppercase tracking-tight text-[#202A30]">{data.fullName}</h2>
-                {data.desiredPosition && <p className="mt-2 text-sm font-bold text-[#53616D]">{data.desiredPosition}</p>}
-                {hasContact && (
-                  <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-5 text-[#53616D]">
-                    {data.email && <span>{data.email}</span>}
-                    {data.phone && <span>{data.phone}</span>}
-                    {data.location && <span>{data.location}</span>}
-                    {linkedinHref && <a href={linkedinHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">LinkedIn <ExternalLink size={10} /></a>}
-                    {portfolioHref && <a href={portfolioHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">Portofolio <ExternalLink size={10} /></a>}
+              <header className="flex items-start justify-between gap-5 border-b-2 border-[#2C3E50] pb-5">
+                <div className="min-w-0 flex-1">
+                  <h2 className="break-words text-3xl font-extrabold uppercase tracking-tight text-[#202A30]">{data.fullName}</h2>
+                  {data.desiredPosition && <p className="mt-2 text-sm font-bold text-[#53616D]">{data.desiredPosition}</p>}
+                  {hasContact && (
+                    <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-5 text-[#53616D]">
+                      {data.email && <span>{data.email}</span>}
+                      {data.phone && <span>{data.phone}</span>}
+                      {data.location && <span>{data.location}</span>}
+                      {linkedinHref && <a href={linkedinHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">LinkedIn <ExternalLink size={10} /></a>}
+                      {portfolioHref && <a href={portfolioHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">Portofolio <ExternalLink size={10} /></a>}
+                    </div>
+                  )}
+                </div>
+                {data.photoUrl && (
+                  <div className="relative h-[104px] w-[82px] shrink-0 overflow-hidden rounded-lg border border-[#DCE3E6] bg-[#F3F5F6]">
+                    <Image
+                      src={data.photoUrl}
+                      alt={`Foto profil ${data.fullName}`}
+                      fill
+                      unoptimized
+                      sizes="82px"
+                      className="object-cover"
+                    />
                   </div>
                 )}
               </header>
@@ -230,7 +245,7 @@ export function JobSeekerCvPreview({ data }: { data: JobSeekerCvData }) {
               <ul className="mt-4 space-y-3 text-xs leading-5 text-[#667681]">
                 <li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#4E765B]" /> Satu kolom dengan urutan informasi yang jelas.</li>
                 <li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#4E765B]" /> Judul bagian standar agar mudah dipindai.</li>
-                <li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#4E765B]" /> Tanpa tabel, grafik, atau foto yang mengganggu pembacaan teks.</li>
+                <li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#4E765B]" /> Teks tetap satu kolom; foto profil kecil ditempatkan terpisah di area identitas.</li>
                 <li className="flex gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#4E765B]" /> File PDF dapat diunduh dan dilampirkan saat melamar.</li>
               </ul>
             </section>

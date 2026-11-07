@@ -2,8 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { loadJobSeekerCvData } from "@/lib/cv/data";
 import { buildJobSeekerCvPdf } from "@/lib/cv/pdf";
 
-export const runtime = "nodejs";
-
 function safeFileName(value: string) {
   return value
     .normalize("NFD")
@@ -47,7 +45,23 @@ export async function GET() {
     return Response.json({ error: "Nama lengkap belum tersedia. Perbarui identitas pada profil terlebih dahulu." }, { status: 422 });
   }
 
-  const pdfBytes = Buffer.from(buildJobSeekerCvPdf(cvData));
+  let photoBytes: Uint8Array | null = null;
+  let photoContentType: string | null = null;
+
+  if (cvData.photoPath) {
+    const { data: photoFile } = await supabase.storage
+      .from("profile-photos")
+      .download(cvData.photoPath);
+
+    if (photoFile) {
+      photoBytes = new Uint8Array(await photoFile.arrayBuffer());
+      photoContentType = photoFile.type || null;
+    }
+  }
+
+  const pdfBytes = Buffer.from(
+    buildJobSeekerCvPdf(cvData, photoBytes, photoContentType),
+  );
   const fileName = `CV-${safeFileName(cvData.fullName)}.pdf`;
 
   return new Response(pdfBytes, {

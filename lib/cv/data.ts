@@ -32,6 +32,8 @@ export type CvCertificate = {
 
 export type JobSeekerCvData = {
   fullName: string;
+  photoPath?: string | null;
+  photoUrl?: string | null;
   email: string;
   phone: string;
   location: string;
@@ -62,7 +64,7 @@ export async function loadJobSeekerCvData(
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("full_name,phone,province,city,district,village")
+      .select("full_name,phone,province,city,district,village,photo_path")
       .eq("id", userId)
       .maybeSingle(),
     supabase
@@ -97,6 +99,7 @@ export async function loadJobSeekerCvData(
 
   return {
     fullName: profile?.full_name || fallbackName || "Pencari Kerja",
+    photoPath: profile?.photo_path || null,
     email: email || "",
     phone: profile?.phone || "",
     location: [profile?.village, profile?.district, profile?.city, profile?.province]

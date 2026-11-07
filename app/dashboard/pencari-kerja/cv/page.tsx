@@ -3,9 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { loadJobSeekerCvData } from "@/lib/cv/data";
 import { JobSeekerCvPreview } from "@/components/job-seeker-cv-preview";
 
-// Halaman CV membutuhkan sesi pengguna dan data profil saat request berlangsung.
+// Halaman ini memerlukan sesi dan data privat saat request berlangsung.
 export const instant = false;
-
 
 export default async function JobSeekerCvPage() {
   const supabase = await createClient();
@@ -34,5 +33,15 @@ export default async function JobSeekerCvPage() {
     typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : null,
   );
 
-  return <JobSeekerCvPreview data={data} />;
+  const { data: signedPhoto } = data.photoPath
+    ? await supabase.storage
+        .from("profile-photos")
+        .createSignedUrl(data.photoPath, 60 * 60)
+    : { data: null };
+
+  return (
+    <JobSeekerCvPreview
+      data={{ ...data, photoUrl: signedPhoto?.signedUrl ?? null }}
+    />
+  );
 }

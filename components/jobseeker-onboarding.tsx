@@ -548,25 +548,56 @@ export function JobSeekerOnboarding({
 		setSkillInput("");
 	}
 
-	function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
-		const file = event.target.files?.[0];
+	async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+		const input = event.currentTarget;
+		const file = input.files?.[0];
 		if (!file) return;
 
 		const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 		if (!allowedTypes.includes(file.type)) {
 			setError("Foto profil harus berformat JPG, PNG, atau WEBP.");
-			event.target.value = "";
+			input.value = "";
 			return;
 		}
 		if (file.size > 3 * 1024 * 1024) {
 			setError("Ukuran foto maksimal 3 MB.");
-			event.target.value = "";
+			input.value = "";
 			return;
 		}
 
-		setError("");
-		setPhotoFile(file);
-		setPhotoPreview(URL.createObjectURL(file));
+		try {
+			let normalizedFile = file;
+			if (file.type === "image/webp") {
+				const bitmap = await createImageBitmap(file);
+				const canvas = document.createElement("canvas");
+				canvas.width = bitmap.width;
+				canvas.height = bitmap.height;
+				const context = canvas.getContext("2d");
+				if (!context) throw new Error("Foto belum dapat diproses. Coba gunakan JPG atau PNG.");
+				context.drawImage(bitmap, 0, 0);
+				bitmap.close();
+				const jpegBlob = await new Promise<Blob>((resolve, reject) => {
+					canvas.toBlob(
+						(blob) => blob ? resolve(blob) : reject(new Error("Konversi foto gagal.")),
+						"image/jpeg",
+						0.9,
+					);
+				});
+				normalizedFile = new File(
+					[jpegBlob],
+					file.name.replace(/\.[^.]+$/, "") + ".jpg",
+					{ type: "image/jpeg", lastModified: Date.now() },
+				);
+			}
+
+			setError("");
+			setPhotoFile(normalizedFile);
+			setPhotoPreview(URL.createObjectURL(normalizedFile));
+		} catch (caught) {
+			setError(caught instanceof Error ? caught.message : "Foto belum dapat diproses.");
+		} finally {
+			input.value = "";
+		}
 	}
 
 	function validateCurrentStep() {
