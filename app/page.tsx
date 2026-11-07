@@ -28,6 +28,10 @@ function formatSalary(job: {
 
 export default async function Home() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data: jobs } = await supabase
     .from("jobs")
     .select(
@@ -70,5 +74,5 @@ export default async function Home() {
     };
   });
 
-  return <LandingPage jobs={landingJobs} />;
+  return <LandingPage jobs={landingJobs} isAuthenticated={Boolean(user)} />;
 }

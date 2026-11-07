@@ -146,7 +146,6 @@ const categories = [
 ];
 
 const educationLevels = [
-	"Tidak/belum sekolah",
 	"SD/Sederajat",
 	"SMP/Sederajat",
 	"SMA/Sederajat",
@@ -284,7 +283,9 @@ export function JobSeekerOnboarding({
 	initialStep = 0,
 }: Props) {
 	const router = useRouter();
-	const [currentStep, setCurrentStep] = useState(() => (isEditing ? Math.max(0, Math.min(4, initialStep)) : 0));
+	const [currentStep, setCurrentStep] = useState(() =>
+		isEditing ? Math.max(0, Math.min(4, initialStep)) : 0,
+	);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [geoLoading, setGeoLoading] = useState(false);
@@ -573,12 +574,16 @@ export function JobSeekerOnboarding({
 				canvas.width = bitmap.width;
 				canvas.height = bitmap.height;
 				const context = canvas.getContext("2d");
-				if (!context) throw new Error("Foto belum dapat diproses. Coba gunakan JPG atau PNG.");
+				if (!context)
+					throw new Error(
+						"Foto belum dapat diproses. Coba gunakan JPG atau PNG.",
+					);
 				context.drawImage(bitmap, 0, 0);
 				bitmap.close();
 				const jpegBlob = await new Promise<Blob>((resolve, reject) => {
 					canvas.toBlob(
-						(blob) => blob ? resolve(blob) : reject(new Error("Konversi foto gagal.")),
+						(blob) =>
+							blob ? resolve(blob) : reject(new Error("Konversi foto gagal.")),
 						"image/jpeg",
 						0.9,
 					);
@@ -594,7 +599,9 @@ export function JobSeekerOnboarding({
 			setPhotoFile(normalizedFile);
 			setPhotoPreview(URL.createObjectURL(normalizedFile));
 		} catch (caught) {
-			setError(caught instanceof Error ? caught.message : "Foto belum dapat diproses.");
+			setError(
+				caught instanceof Error ? caught.message : "Foto belum dapat diproses.",
+			);
 		} finally {
 			input.value = "";
 		}
@@ -1134,126 +1141,132 @@ export function JobSeekerOnboarding({
 					</div>
 				</header>
 
-				<div className={isEditing ? "mx-auto max-w-4xl" : "grid items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)] xl:gap-7"}>
+				<div
+					className={
+						isEditing
+							? "mx-auto max-w-4xl"
+							: "grid items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)] xl:gap-7"
+					}
+				>
 					{!isEditing && (
-					<aside className="rounded-[1.75rem] bg-[#2C3E50] p-5 text-white shadow-xl shadow-[#2C3E50]/10 sm:p-6 lg:sticky lg:top-6">
-						<div className="hidden lg:block">
-							<span className="badge badge-outline border-white/20 bg-white/5 px-3 py-3 text-[10px] font-bold tracking-wider text-[#BDC3C7]">
-								PROFIL PENCARI KERJA
-							</span>
-							<h1 className="mt-5 text-2xl font-extrabold leading-tight tracking-tight">
-								Ceritakan tentang dirimu.
-							</h1>
-							<p className="mt-3 text-xs leading-6 text-white/60">
-								Profil yang lengkap membantu KerjaLokal memahami kemampuan dan
-								menemukan peluang kerja yang lebih sesuai.
-							</p>
-						</div>
-
-						<div className="mt-1 hidden lg:block">
-							<div className="my-6 flex items-center justify-between text-[11px] font-bold text-white/65">
-								<span>PROGRES PROFIL</span>
-								<span className="text-[#ECF0F1]">{progress}%</span>
+						<aside className="rounded-[1.75rem] bg-[#2C3E50] p-5 text-white shadow-xl shadow-[#2C3E50]/10 sm:p-6 lg:sticky lg:top-6">
+							<div className="hidden lg:block">
+								<span className="badge badge-outline border-white/20 bg-white/5 px-3 py-3 text-[10px] font-bold tracking-wider text-[#BDC3C7]">
+									PROFIL PENCARI KERJA
+								</span>
+								<h1 className="mt-5 text-2xl font-extrabold leading-tight tracking-tight">
+									Ceritakan tentang dirimu.
+								</h1>
+								<p className="mt-3 text-xs leading-6 text-white/60">
+									Profil yang lengkap membantu KerjaLokal memahami kemampuan dan
+									menemukan peluang kerja yang lebih sesuai.
+								</p>
 							</div>
-							<progress
-								className="progress h-2 w-full bg-white/15 [--progress-color:#BDC3C7]"
-								value={progress}
-								max="100"
-							/>
-							<div className="mt-7 space-y-5">
-								{steps.map((step, index) => {
-									const Icon = step.icon;
-									const completed = index < currentStep;
-									const active = index === currentStep;
-									return (
-										<div key={step.title} className="flex items-center gap-3">
-											<span
-												className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${
-													completed
-														? "border-[#BDC3C7] bg-[#BDC3C7] text-[#2C3E50]"
-														: active
-															? "border-white bg-white text-[#2C3E50] shadow-lg shadow-black/10"
-															: "border-white/15 bg-white/5 text-white/45"
+
+							<div className="mt-1 hidden lg:block">
+								<div className="my-6 flex items-center justify-between text-[11px] font-bold text-white/65">
+									<span>PROGRES PROFIL</span>
+									<span className="text-[#ECF0F1]">{progress}%</span>
+								</div>
+								<progress
+									className="progress h-2 w-full bg-white/15 [--progress-color:#BDC3C7]"
+									value={progress}
+									max="100"
+								/>
+								<div className="mt-7 space-y-5">
+									{steps.map((step, index) => {
+										const Icon = step.icon;
+										const completed = index < currentStep;
+										const active = index === currentStep;
+										return (
+											<div key={step.title} className="flex items-center gap-3">
+												<span
+													className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${
+														completed
+															? "border-[#BDC3C7] bg-[#BDC3C7] text-[#2C3E50]"
+															: active
+																? "border-white bg-white text-[#2C3E50] shadow-lg shadow-black/10"
+																: "border-white/15 bg-white/5 text-white/45"
+													}`}
+												>
+													{completed ? <Check size={18} /> : <Icon size={18} />}
+												</span>
+												<div className="min-w-0">
+													<p
+														className={`text-sm font-bold ${active ? "text-white" : completed ? "text-[#BDC3C7]" : "text-white/55"}`}
+													>
+														{step.title}
+													</p>
+													<p className="mt-0.5 text-[10px] text-white/40">
+														{step.subtitle}
+													</p>
+												</div>
+												{active && (
+													<ChevronRight
+														size={16}
+														className="ml-auto text-[#BDC3C7]"
+													/>
+												)}
+											</div>
+										);
+									})}
+								</div>
+							</div>
+
+							<div className="lg:hidden">
+								<div className="mb-3 flex items-center justify-between gap-3">
+									<div>
+										<p className="text-[10px] font-bold uppercase tracking-[0.13em] text-white/55">
+											Lengkapi profil
+										</p>
+										<p className="mt-1 text-sm font-extrabold">
+											Tahap {currentStep + 1} dari 5
+										</p>
+									</div>
+									<span className="text-sm font-extrabold text-[#BDC3C7]">
+										{progress}%
+									</span>
+								</div>
+								<progress
+									className="progress h-2 w-full bg-white/15 [--progress-color:#BDC3C7]"
+									value={progress}
+									max="100"
+								/>
+								<div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+									{steps.map((step, index) => {
+										const Icon = step.icon;
+										const active = index === currentStep;
+										const completed = index < currentStep;
+										return (
+											<div
+												key={step.title}
+												className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-bold ${
+													active
+														? "bg-white text-[#2C3E50]"
+														: completed
+															? "bg-white/15 text-[#ECF0F1]"
+															: "bg-white/5 text-white/45"
 												}`}
 											>
-												{completed ? <Check size={18} /> : <Icon size={18} />}
-											</span>
-											<div className="min-w-0">
-												<p
-													className={`text-sm font-bold ${active ? "text-white" : completed ? "text-[#BDC3C7]" : "text-white/55"}`}
-												>
-													{step.title}
-												</p>
-												<p className="mt-0.5 text-[10px] text-white/40">
-													{step.subtitle}
-												</p>
+												{completed ? <Check size={13} /> : <Icon size={13} />}
+												{step.title}
 											</div>
-											{active && (
-												<ChevronRight
-													size={16}
-													className="ml-auto text-[#BDC3C7]"
-												/>
-											)}
-										</div>
-									);
-								})}
-							</div>
-						</div>
-
-						<div className="lg:hidden">
-							<div className="mb-3 flex items-center justify-between gap-3">
-								<div>
-									<p className="text-[10px] font-bold uppercase tracking-[0.13em] text-white/55">
-										Lengkapi profil
-									</p>
-									<p className="mt-1 text-sm font-extrabold">
-										Tahap {currentStep + 1} dari 5
-									</p>
+										);
+									})}
 								</div>
-								<span className="text-sm font-extrabold text-[#BDC3C7]">
-									{progress}%
-								</span>
 							</div>
-							<progress
-								className="progress h-2 w-full bg-white/15 [--progress-color:#BDC3C7]"
-								value={progress}
-								max="100"
-							/>
-							<div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-								{steps.map((step, index) => {
-									const Icon = step.icon;
-									const active = index === currentStep;
-									const completed = index < currentStep;
-									return (
-										<div
-											key={step.title}
-											className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-bold ${
-												active
-													? "bg-white text-[#2C3E50]"
-													: completed
-														? "bg-white/15 text-[#ECF0F1]"
-														: "bg-white/5 text-white/45"
-											}`}
-										>
-											{completed ? <Check size={13} /> : <Icon size={13} />}
-											{step.title}
-										</div>
-									);
-								})}
-							</div>
-						</div>
 
-						<div className="mt-7 hidden rounded-2xl border border-white/10 bg-white/[0.06] p-4 lg:block">
-							<div className="flex items-center gap-2 text-[#BDC3C7]">
-								<CircleHelp size={16} />
-								<span className="text-xs font-bold">Butuh bantuan?</span>
+							<div className="mt-7 hidden rounded-2xl border border-white/10 bg-white/[0.06] p-4 lg:block">
+								<div className="flex items-center gap-2 text-[#BDC3C7]">
+									<CircleHelp size={16} />
+									<span className="text-xs font-bold">Butuh bantuan?</span>
+								</div>
+								<p className="mt-2 text-[11px] leading-5 text-white/55">
+									Isi informasi sesuai keadaan sebenarnya. Bagian pengalaman dan
+									sertifikat boleh dikosongkan jika belum memilikinya.
+								</p>
 							</div>
-							<p className="mt-2 text-[11px] leading-5 text-white/55">
-								Isi informasi sesuai keadaan sebenarnya. Bagian pengalaman dan
-								sertifikat boleh dikosongkan jika belum memilikinya.
-							</p>
-						</div>
-					</aside>
+						</aside>
 					)}
 
 					<section className="min-w-0 overflow-hidden rounded-[1.75rem] border border-[#BDC3C7]/65 bg-white shadow-xl shadow-[#2C3E50]/5">
@@ -1261,7 +1274,10 @@ export function JobSeekerOnboarding({
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
 									<div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#7F8C8D]">
-										<CurrentIcon size={14} /> {isEditing ? "EDIT PROFIL" : `TAHAP ${currentStep + 1} DARI 5`}
+										<CurrentIcon size={14} />{" "}
+										{isEditing
+											? "EDIT PROFIL"
+											: `TAHAP ${currentStep + 1} DARI 5`}
 									</div>
 									<h2 className="mt-2 text-2xl font-extrabold tracking-tight text-[#2C3E50] sm:text-[1.8rem]">
 										{currentStep === 0 && "Identitas & lokasi"}
@@ -1271,18 +1287,18 @@ export function JobSeekerOnboarding({
 										{currentStep === 4 && "Sertifikat & portofolio"}
 									</h2>
 									<p className="mt-2 max-w-2xl text-xs leading-6 text-[#7F8C8D] sm:text-sm">
-									{isEditing
-										? "Perbarui informasi pada bagian ini saja. Bagian profil lainnya tidak akan berubah. Setelah disimpan, kamu akan kembali ke halaman Profil Saya."
-										: currentStep === 0
-											? "Informasi dasar membantu pelaku usaha mengenalmu dan membantu sistem menemukan lowongan di wilayahmu."
-											: currentStep === 1
-												? "Tambahkan kemampuan dan jenis pekerjaan yang kamu inginkan agar rekomendasi lebih tepat."
-												: currentStep === 2
-													? "Masukkan pendidikan formal maupun nonformal. Kamu dapat menambahkan lebih dari satu riwayat."
-													: currentStep === 3
-														? "Ceritakan pengalaman kerja, magang, organisasi, atau pekerjaan lepas. Fresh graduate boleh melewati tahap ini."
-														: "Tambahkan sertifikat, tautan portofolio, dan informasi pendukung lainnya jika tersedia."}
-								</p>
+										{isEditing
+											? "Perbarui informasi pada bagian ini saja. Bagian profil lainnya tidak akan berubah. Setelah disimpan, kamu akan kembali ke halaman Profil Saya."
+											: currentStep === 0
+												? "Informasi dasar membantu pelaku usaha mengenalmu dan membantu sistem menemukan lowongan di wilayahmu."
+												: currentStep === 1
+													? "Tambahkan kemampuan dan jenis pekerjaan yang kamu inginkan agar rekomendasi lebih tepat."
+													: currentStep === 2
+														? "Masukkan pendidikan formal maupun nonformal. Kamu dapat menambahkan lebih dari satu riwayat."
+														: currentStep === 3
+															? "Ceritakan pengalaman kerja, magang, organisasi, atau pekerjaan lepas. Fresh graduate boleh melewati tahap ini."
+															: "Tambahkan sertifikat, tautan portofolio, dan informasi pendukung lainnya jika tersedia."}
+									</p>
 								</div>
 								<span className="hidden h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#ECF0F1] text-[#34495E] sm:grid">
 									<CurrentIcon size={22} />
@@ -2632,12 +2648,12 @@ export function JobSeekerOnboarding({
 									<button
 										type="button"
 										onClick={() => {
-							if (isEditing) {
-								router.replace("/dashboard/pencari-kerja/profil");
-								return;
-							}
-							handleBack();
-						}}
+											if (isEditing) {
+												router.replace("/dashboard/pencari-kerja/profil");
+												return;
+											}
+											handleBack();
+										}}
 										disabled={(!isEditing && currentStep === 0) || saving}
 										className="btn btn-ghost min-h-12 rounded-xl px-5 text-sm font-bold text-[#53616D] hover:bg-[#ECF0F1] disabled:opacity-40"
 									>
@@ -2665,10 +2681,10 @@ export function JobSeekerOnboarding({
 													Menyimpan...
 												</>
 											) : isEditing ? (
-								<>
-									Simpan Perubahan <CheckCircle2 size={17} />
-								</>
-							) : currentStep === steps.length - 1 ? (
+												<>
+													Simpan Perubahan <CheckCircle2 size={17} />
+												</>
+											) : currentStep === steps.length - 1 ? (
 												<>
 													Simpan & Selesaikan <CheckCircle2 size={17} />
 												</>

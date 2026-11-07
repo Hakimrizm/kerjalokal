@@ -19,7 +19,7 @@ export default async function EditEmployerJobPage({ params }: PageProps) {
   if (!profile?.profile_completed) redirect("/onboarding/employer");
   const { data: job } = await supabase.from("jobs").select("*").eq("id", jobId).eq("employer_id", user.id).maybeSingle();
   if (!job) notFound();
-  if (job.status === "banned") redirect("/dashboard/pelaku-usaha/lowongan");
+  if (job.status === "banned" || job.status === "finished") redirect("/dashboard/pelaku-usaha/lowongan");
 
-  return <main className="min-h-screen bg-[#F3F5F6] px-4 py-7 text-[#2C3E50] sm:px-6 lg:px-8"><div className="mx-auto max-w-5xl"><Link href="/dashboard/pelaku-usaha/lowongan" className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-[#7F8C8D] hover:text-[#2C3E50]"><ArrowLeft size={15}/> Kembali ke Kelola Lowongan</Link><EmployerJobForm employerId={user.id} initialJob={job as EmployerJobRecord} defaultLocation={profile}/></div></main>;
+  return <main className="min-h-screen bg-[#F3F5F6] px-4 py-7 text-[#2C3E50] sm:px-6 lg:px-8"><div className="mx-auto max-w-5xl"><Link href="/dashboard/pelaku-usaha/lowongan" className="mb-5 inline-flex items-center gap-2 text-[13px] font-extrabold text-[#284B67] transition-colors hover:text-[#2C3E50]"><ArrowLeft size={15}/> Kembali ke Kelola Lowongan</Link><EmployerJobForm employerId={user.id} initialJob={job as EmployerJobRecord} defaultLocation={profile}/></div></main>;
 }

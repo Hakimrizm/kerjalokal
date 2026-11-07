@@ -50,8 +50,8 @@ export default async function PublicJobsPage() {
     <main className="min-h-screen bg-[#F3F5F6] px-4 py-8 text-[#2C3E50] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
-          <Link href="/dashboard" className="btn btn-outline btn-sm rounded-full border-[#D5DDE1] bg-white px-4 text-xs font-bold text-[#53616D] hover:border-[#2C3E50] hover:bg-[#2C3E50] hover:text-white">
-            <ArrowLeft size={14} /> Back
+          <Link href="/dashboard" className="inline-flex items-center gap-2 text-[13px] font-extrabold text-[#284B67] transition-colors hover:text-[#2C3E50]">
+            <ArrowLeft size={16} /> Back
           </Link>
           <Link href="/" className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2C3E50] text-white"><BriefcaseBusiness size={19} /></span>

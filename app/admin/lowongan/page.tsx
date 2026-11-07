@@ -10,6 +10,7 @@ const statusLabels: Record<string, string> = {
   published: "Tayang",
   rejected: "Perlu perbaikan",
   closed: "Ditutup",
+  finished: "Selesai",
   banned: "Diblokir karena fraud",
 };
 
@@ -17,6 +18,7 @@ function statusClass(status: string) {
   if (status === "published") return "badge-success";
   if (status === "banned" || status === "rejected") return "badge-error";
   if (status === "pending_review") return "badge-warning";
+  if (status === "finished") return "badge-info";
   return "badge-ghost";
 }
 
@@ -58,6 +60,7 @@ export default async function AdminJobsPage() {
         <span className="badge badge-success">Tayang: {rows.filter((job) => job.status === "published").length}</span>
         <span className="badge badge-warning">Ditandai sistem: {rows.filter((job) => job.fraud_review_status === "pending_review").length}</span>
         <span className="badge badge-error">Diblokir: {rows.filter((job) => job.status === "banned").length}</span>
+        <span className="badge badge-info">Selesai: {rows.filter((job) => job.status === "finished").length}</span>
       </div>
 
       {error && <div role="alert" className="alert alert-error rounded-xl text-xs">Data lowongan tidak dapat dimuat. Periksa migrasi dan kebijakan RLS.</div>}

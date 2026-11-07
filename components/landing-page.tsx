@@ -69,7 +69,13 @@ const features = [
 	},
 ];
 
-export function LandingPage({ jobs }: { jobs: LandingJob[] }) {
+export function LandingPage({
+  jobs,
+  isAuthenticated,
+}: {
+  jobs: LandingJob[];
+  isAuthenticated: boolean;
+}) {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const [keyword, setKeyword] = useState("");
 	const [district, setDistrict] = useState("all");
@@ -163,14 +169,31 @@ export function LandingPage({ jobs }: { jobs: LandingJob[] }) {
 
 					{/* DESKTOP ACTION + MOBILE TOGGLE */}
 					<div className="flex items-center justify-end gap-2">
-						{/* Desktop buttons */}
+						{/* Desktop account actions */}
 						<div className="hidden items-center gap-2 xl:flex">
-							<Link
-								href="/dashboard"
-								className="btn btn-primary rounded-full border-0 px-6 text-sm font-semibold text-white shadow-md shadow-[#2C3E50]/15 transition-all hover:-translate-y-0.5 hover:bg-[#34495E]"
-							>
-								Dashboard <ArrowRight size={16} />
-							</Link>
+							{isAuthenticated ? (
+								<Link
+									href="/dashboard"
+									className="btn btn-primary rounded-full border-0 px-6 text-sm font-semibold text-white shadow-md shadow-[#2C3E50]/15 transition-all hover:-translate-y-0.5 hover:bg-[#34495E]"
+								>
+									Dashboard <ArrowRight size={16} />
+								</Link>
+							) : (
+								<>
+									<Link
+										href="/auth/login"
+										className="btn btn-ghost rounded-full px-5 text-sm font-bold text-[#34495E] hover:bg-white"
+									>
+										Sign in
+									</Link>
+									<Link
+										href="/auth/sign-up"
+										className="btn btn-primary rounded-full border-0 bg-[#2C3E50] px-6 text-sm font-semibold text-white shadow-md shadow-[#2C3E50]/15 transition-all hover:-translate-y-0.5 hover:bg-[#34495E]"
+									>
+										Sign up <ArrowRight size={16} />
+									</Link>
+								</>
+							)}
 						</div>
 
 						{/* Mobile hamburger */}
@@ -210,14 +233,33 @@ export function LandingPage({ jobs }: { jobs: LandingJob[] }) {
 								</ul>
 							</nav>
 
-							<div className="mt-4 border-t border-[#2C3E50]/10 pt-4">
-								<Link
-									href="/dashboard"
-									onClick={closeMobileMenu}
-									className="btn btn-primary min-h-11 w-full rounded-full border-0 bg-[#2C3E50] text-sm font-semibold text-white hover:bg-[#34495E]"
-								>
-									Dashboard <ArrowRight size={15} />
-								</Link>
+							<div className="mt-4 flex gap-2 border-t border-[#2C3E50]/10 pt-4">
+								{isAuthenticated ? (
+									<Link
+										href="/dashboard"
+										onClick={closeMobileMenu}
+										className="btn btn-primary min-h-11 w-full rounded-full border-0 bg-[#2C3E50] text-sm font-semibold text-white hover:bg-[#34495E]"
+									>
+										Dashboard <ArrowRight size={15} />
+									</Link>
+								) : (
+									<>
+										<Link
+											href="/auth/login"
+											onClick={closeMobileMenu}
+											className="btn btn-ghost min-h-11 flex-1 rounded-full text-sm font-bold text-[#34495E] hover:bg-white"
+										>
+											Sign in
+										</Link>
+										<Link
+											href="/auth/sign-up"
+											onClick={closeMobileMenu}
+											className="btn btn-primary min-h-11 flex-1 rounded-full border-0 bg-[#2C3E50] text-sm font-semibold text-white hover:bg-[#34495E]"
+										>
+											Sign up <ArrowRight size={15} />
+										</Link>
+									</>
+								)}
 							</div>
 
 							<p className="mt-4 text-center text-[10px] font-medium tracking-wide text-[#7F8C8D]">
@@ -265,10 +307,10 @@ export function LandingPage({ jobs }: { jobs: LandingJob[] }) {
 								Cari Lowongan <ArrowRight size={17} />
 							</Link>
 							<Link
-								href="/dashboard"
+								href={isAuthenticated ? "/dashboard" : "/auth/login"}
 								className="btn btn-outline h-[52px] min-h-[52px] rounded-full border-white/35 px-7 text-sm font-bold text-white hover:border-white hover:bg-white/10 hover:text-white"
 							>
-								Buka Dashboard <ArrowRight size={17} />
+								{isAuthenticated ? "Buka Dashboard" : "Sign in"} <ArrowRight size={17} />
 							</Link>
 						</div>
 
@@ -758,10 +800,10 @@ export function LandingPage({ jobs }: { jobs: LandingJob[] }) {
 							</div>
 							<div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
 								<Link
-									href="/dashboard"
+									href={isAuthenticated ? "/dashboard" : "/auth/sign-up/employer"}
 									className="btn h-12 rounded-full border-0 bg-[#ECF0F1] px-7 font-bold text-primary hover:bg-white"
 								>
-									Dashboard <ArrowUpRight size={16} />
+									{isAuthenticated ? "Dashboard" : "Sign up"} <ArrowUpRight size={16} />
 								</Link>
 								<Link
 									href="#cara-kerja"
@@ -828,8 +870,11 @@ export function LandingPage({ jobs }: { jobs: LandingJob[] }) {
 							</h3>
 							<ul className="mt-5 space-y-3 text-sm text-white/70">
 								<li>
-									<Link href="/dashboard" className="transition hover:text-white">
-										Buka Dashboard
+									<Link
+										href={isAuthenticated ? "/dashboard" : "/auth/login"}
+										className="transition hover:text-white"
+									>
+										{isAuthenticated ? "Buka Dashboard" : "Sign in"}
 									</Link>
 								</li>
 							</ul>

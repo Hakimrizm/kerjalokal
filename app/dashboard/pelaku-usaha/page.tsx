@@ -23,6 +23,7 @@ const statusLabel: Record<string, string> = {
   published: "Tayang",
   rejected: "Perlu perbaikan",
   closed: "Ditutup",
+  finished: "Selesai",
   banned: "Diblokir karena fraud",
 };
 
@@ -32,6 +33,7 @@ function statusClass(status: string) {
   if (status === "pending_review") return "badge-warning";
   if (status === "closed") return "badge-ghost";
   if (status === "banned") return "badge-error";
+  if (status === "finished") return "badge-info";
   return "badge-outline";
 }
 

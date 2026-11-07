@@ -18,9 +18,13 @@ const terminalStatuses = new Set(["accepted", "rejected"]);
 export function ApplicationStatusControl({
   applicationId,
   currentStatus,
+  acceptedCount,
+  vacancies,
 }: {
   applicationId: string;
   currentStatus: string;
+  acceptedCount: number;
+  vacancies: number;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(currentStatus);
@@ -53,16 +57,18 @@ export function ApplicationStatusControl({
       return;
     }
 
-    const { error } = await supabase
-      .from("job_applications")
-      .update({ status: next, updated_at: new Date().toISOString() })
-      .eq("id", applicationId);
+    const { error } = await supabase.rpc("employer_update_job_application_status", {
+      target_application_id: applicationId,
+      next_status: next,
+    });
 
     setSaving(false);
     if (error) {
-      if (error.code === "23505" || error.message.includes("sudah memiliki kandidat")) {
-        setMessage("Lowongan ini sudah memiliki kandidat yang diterima.");
-      } else if (error.code === "P0001" || error.message.includes("Status seleksi")) {
+      if (
+        error.code === "P0001" ||
+        error.message.toLowerCase().includes("kuota") ||
+        error.message.includes("Status seleksi")
+      ) {
         setMessage(error.message);
       } else {
         setMessage("Status belum berhasil diperbarui. Silakan coba kembali.");
@@ -71,9 +77,12 @@ export function ApplicationStatusControl({
     }
 
     setStatus(next);
+    const positionsRemainingAfterAccept = Math.max(0, vacancies - (acceptedCount + 1));
     setMessage(
       next === "accepted"
-        ? "Kandidat diterima. Kandidat lain pada lowongan ini otomatis ditolak."
+        ? positionsRemainingAfterAccept === 0
+          ? "Kuota terpenuhi. Lowongan selesai dan pelamar aktif lainnya otomatis ditolak."
+          : `Kandidat diterima. Masih tersedia ${positionsRemainingAfterAccept} posisi; kandidat lain tetap dapat diproses.`
         : next === "rejected"
           ? "Lamaran ditolak dan status ini tidak dapat diubah kembali."
           : "Status berhasil diperbarui.",

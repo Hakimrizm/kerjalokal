@@ -20,7 +20,7 @@ export default async function EmployerJobApplicantsPage({ params }: PageProps) {
   const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
   if (role?.role !== "employer") redirect("/dashboard/pencari-kerja");
 
-  const { data: job } = await supabase.from("jobs").select("id,title,category,employment_type,status,city,district").eq("id", jobId).eq("employer_id", user.id).maybeSingle();
+  const { data: job } = await supabase.from("jobs").select("id,title,category,employment_type,status,city,district,vacancies").eq("id", jobId).eq("employer_id", user.id).maybeSingle();
   if (!job) notFound();
 
   const { data: applications } = await supabase.from("job_applications")
@@ -67,30 +67,50 @@ export default async function EmployerJobApplicantsPage({ params }: PageProps) {
   for (const item of experience) experienceMap.set(item.user_id, [...(experienceMap.get(item.user_id) ?? []), item]);
 
   const countByStatus = (status: string) => rows.filter((item) => item.status === status).length;
+  const acceptedCount = countByStatus("accepted");
+  const vacancies = Number(job.vacancies) || 1;
+  const remainingVacancies = Math.max(0, vacancies - acceptedCount);
+  const quotaFilled = acceptedCount >= vacancies || job.status === "finished";
 
   return (
     <main className="min-h-screen bg-[#F3F5F6] px-4 py-7 text-[#2C3E50] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="mb-6">
-          <Link href="/dashboard/pelaku-usaha/lowongan" className="inline-flex items-center gap-2 text-xs font-bold text-[#7F8C8D] hover:text-[#2C3E50]"><ArrowLeft size={15}/> Kembali ke Kelola Lowongan</Link>
+          <Link href="/dashboard/pelaku-usaha/lowongan" className="inline-flex items-center gap-2 text-[13px] font-extrabold text-[#284B67] transition-colors hover:text-[#2C3E50]"><ArrowLeft size={15}/> Kembali ke Kelola Lowongan</Link>
           <div className="mt-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div><span className="badge badge-outline border-[#BDC3C7] bg-white text-[10px] font-bold text-[#53616D]">DAFTAR PELAMAR PER LOWONGAN</span><h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">{job.title}</h1><p className="mt-1 text-xs text-[#7F8C8D]">{job.category} · {job.employment_type} · {job.district}, {job.city}</p></div>
             <div className="flex items-center gap-2 rounded-xl border border-[#E2E7E9] bg-white px-4 py-3"><Users size={18} className="text-[#53616D]"/><div><p className="text-lg font-extrabold">{rows.length}</p><p className="text-[10px] text-[#8A969D]">Total pelamar</p></div></div>
           </div>
         </header>
 
-        {countByStatus("accepted") > 0 && (
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-[#CFE2D5] bg-[#F0F7F2] px-4 py-3 text-[#355E45]">
+        {acceptedCount > 0 && (
+          <div className={`mb-5 flex items-start gap-3 rounded-xl border px-4 py-3 ${quotaFilled ? "border-[#CFE2D5] bg-[#F0F7F2] text-[#355E45]" : "border-[#DCE5EA] bg-[#F2F7FA] text-[#355E73]"}`}>
             <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
             <div>
-              <p className="text-xs font-extrabold">Kandidat sudah diterima</p>
-              <p className="mt-1 text-[11px] leading-5 text-[#557562]">Seluruh pelamar lain pada lowongan ini otomatis berstatus Ditolak. Status seleksi yang sudah final tidak dapat diubah kembali.</p>
+              <p className="text-xs font-extrabold">{quotaFilled ? "Kuota tenaga kerja terpenuhi" : "Proses penerimaan masih berlangsung"}</p>
+              <p className={`mt-1 text-[11px] leading-5 ${quotaFilled ? "text-[#557562]" : "text-[#5E7787]"}`}>
+                {quotaFilled
+                  ? `${acceptedCount} dari ${vacancies} posisi telah terisi. Lowongan ditandai selesai dan tidak lagi ditampilkan kepada pencari kerja. Pelamar aktif yang tersisa otomatis ditolak.`
+                  : `${acceptedCount} dari ${vacancies} posisi telah terisi. Masih tersedia ${remainingVacancies} posisi, sehingga kandidat lain tetap dapat diproses dan status wawancara masih bisa diperbarui.`}
+              </p>
             </div>
           </div>
         )}
 
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {[["Masuk",countByStatus("submitted")],["Ditinjau",countByStatus("reviewing")],["Wawancara",countByStatus("interview")],["Diterima",countByStatus("accepted")],["Ditolak",countByStatus("rejected")]].map(([label,value])=><div key={String(label)} className="rounded-xl border border-[#E2E7E9] bg-white p-3"><p className="text-[10px] font-semibold text-[#8A969D]">{label}</p><p className="mt-1 text-xl font-extrabold">{value}</p></div>)}
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-6">
+          {[
+            ["Masuk", countByStatus("submitted")],
+            ["Ditinjau", countByStatus("reviewing")],
+            ["Wawancara", countByStatus("interview")],
+            ["Diterima", `${acceptedCount}/${vacancies}`],
+            ["Ditolak", countByStatus("rejected")],
+            ["Posisi tersisa", remainingVacancies],
+          ].map(([label, value]) => (
+            <div key={String(label)} className="rounded-xl border border-[#E2E7E9] bg-white p-3">
+              <p className="text-[10px] font-semibold text-[#8A969D]">{label}</p>
+              <p className="mt-1 text-xl font-extrabold">{value}</p>
+            </div>
+          ))}
         </div>
 
         {rows.length ? <div className="space-y-4">{rows.map((application) => {
@@ -114,7 +134,7 @@ export default async function EmployerJobApplicantsPage({ params }: PageProps) {
                   {preference?.summary && <p className="mt-3 max-w-3xl text-xs leading-6 text-[#667681]">{preference.summary}</p>}
                 </div>
               </div>
-              <div className="shrink-0 lg:w-[190px]"><ApplicationStatusControl key={`${application.id}:${application.status}`} applicationId={application.id} currentStatus={application.status}/></div>
+              <div className="shrink-0 lg:w-[190px]"><ApplicationStatusControl key={`${application.id}:${application.status}`} applicationId={application.id} currentStatus={application.status} acceptedCount={acceptedCount} vacancies={vacancies}/></div>
             </div>
             <div className="mx-5 mb-4 flex flex-col gap-3 rounded-xl border border-[#DCE5E8] bg-[#F7F9FA] p-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">

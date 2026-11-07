@@ -6,8 +6,8 @@ import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, Clock3, FilePlu
 
 export const instant = false;
 
-const labels: Record<string, string> = { draft: "Draft", pending_review: "Perlu pemeriksaan", published: "Tayang", rejected: "Perlu perbaikan", closed: "Ditutup", banned: "Diblokir karena fraud" };
-const classes: Record<string, string> = { draft: "badge-ghost", pending_review: "badge-warning", published: "badge-success", rejected: "badge-error", closed: "badge-outline", banned: "badge-error" };
+const labels: Record<string, string> = { draft: "Draft", pending_review: "Perlu pemeriksaan", published: "Tayang", rejected: "Perlu perbaikan", closed: "Ditutup", finished: "Selesai", banned: "Diblokir karena fraud" };
+const classes: Record<string, string> = { draft: "badge-ghost", pending_review: "badge-warning", published: "badge-success", rejected: "badge-error", closed: "badge-outline", finished: "badge-info", banned: "badge-error" };
 function dateLabel(value?: string | null) { return value ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${value.slice(0,10)}T00:00:00`)) : "Tidak ditentukan"; }
 
 export default async function EmployerJobsPage() {
@@ -23,9 +23,15 @@ export default async function EmployerJobsPage() {
   const canCreateJob = employerProfile?.verification_status === "verified";
   const rows = jobs ?? [];
   const ids = rows.map((job) => job.id);
-  const { data: applications } = ids.length ? await supabase.from("job_applications").select("id,job_id").in("job_id", ids) : { data: [] as {id:string;job_id:string}[] };
+  const { data: applications } = ids.length ? await supabase.from("job_applications").select("id,job_id,status").in("job_id", ids) : { data: [] as {id:string;job_id:string;status:string}[] };
   const counts = new Map<string, number>();
-  for (const app of applications ?? []) counts.set(app.job_id, (counts.get(app.job_id) ?? 0) + 1);
+  const acceptedCounts = new Map<string, number>();
+  for (const app of applications ?? []) {
+    counts.set(app.job_id, (counts.get(app.job_id) ?? 0) + 1);
+    if (app.status === "accepted") {
+      acceptedCounts.set(app.job_id, (acceptedCounts.get(app.job_id) ?? 0) + 1);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-[#F3F5F6] px-4 py-7 text-[#2C3E50] sm:px-6 lg:px-8">
@@ -48,6 +54,8 @@ export default async function EmployerJobsPage() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2"><h2 className="text-base font-extrabold text-[#2C3E50]">{job.title}</h2><span className={`badge badge-sm ${classes[job.status] ?? "badge-ghost"}`}>{labels[job.status] ?? job.status}</span></div>
               <p className="mt-2 text-xs text-[#7F8C8D]">{job.category} · {job.employment_type} · {job.vacancies} orang dibutuhkan</p>
+              <p className="mt-1 text-[11px] font-semibold text-[#53616D]">{acceptedCounts.get(job.id) ?? 0} dari {job.vacancies} posisi telah terisi</p>
+              {job.status === "finished" && <p className="mt-3 rounded-lg bg-[#EEF6FA] px-3 py-2 text-[11px] leading-5 text-[#355E73]"><b>Lowongan selesai.</b> Seluruh kebutuhan tenaga kerja sudah terpenuhi. Lowongan otomatis tidak lagi ditampilkan kepada pencari kerja.</p>}
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-[#7F8C8D]"><span className="inline-flex items-center gap-1"><MapPin size={13}/>{job.district}, {job.city}</span><span className="inline-flex items-center gap-1"><CalendarDays size={13}/>Batas lamaran: {dateLabel(job.application_deadline)}</span><span className="inline-flex items-center gap-1"><Users size={13}/>{counts.get(job.id) ?? 0} pelamar</span></div>
               {job.fraud_review_status === "pending_review" && job.status !== "banned" && <p className="mt-3 rounded-lg bg-[#FFF8E8] px-3 py-2 text-[11px] leading-5 text-[#80632C]">Sistem mendeteksi beberapa indikator yang perlu diperiksa. Lowongan tetap tayang selama pemeriksaan dan akan diberi tahu jika ada keputusan.</p>}
               {job.status === "banned" && <p className="mt-3 rounded-lg bg-[#FCEEEE] px-3 py-2 text-[11px] leading-5 text-[#934444]"><b>Lowongan diblokir.</b> {job.ban_reason || "Lowongan tidak lagi ditampilkan kepada pencari kerja karena terindikasi penipuan."}</p>}
@@ -55,7 +63,7 @@ export default async function EmployerJobsPage() {
             </div>
             <div className="flex flex-wrap gap-2 lg:justify-end">
               <Link href={`/dashboard/pelaku-usaha/lowongan/${job.id}/pelamar`} className="btn btn-outline btn-sm rounded-lg border-[#BDC3C7] text-xs text-[#34495E]"><Users size={14}/> Pelamar ({counts.get(job.id) ?? 0})</Link>
-              {job.status !== "banned" && <Link href={`/dashboard/pelaku-usaha/lowongan/${job.id}/edit`} className="btn btn-ghost btn-sm rounded-lg text-xs text-[#53616D]">Edit</Link>}
+              {!["banned", "finished"].includes(job.status) && <Link href={`/dashboard/pelaku-usaha/lowongan/${job.id}/edit`} className="btn btn-ghost btn-sm rounded-lg text-xs text-[#53616D]">Edit</Link>}
               <EmployerJobActions jobId={job.id} status={job.status}/>
             </div>
           </div>
