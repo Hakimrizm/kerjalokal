@@ -46,7 +46,7 @@ export function JobSeekerShell({
 	const items: NavItem[] = [
 		{
 			href: "/dashboard/pencari-kerja",
-			label: "Ringkasan",
+			label: "Dashboard",
 			icon: LayoutDashboard,
 		},
 		{
@@ -178,7 +178,9 @@ export function JobSeekerShell({
 									type="button"
 									onClick={() => setMobileOpen((value) => !value)}
 									className="btn btn-ghost btn-square btn-sm rounded-xl"
-									aria-label={mobileOpen ? "Tutup menu navigasi" : "Buka menu navigasi"}
+									aria-label={
+										mobileOpen ? "Tutup menu navigasi" : "Buka menu navigasi"
+									}
 									aria-expanded={mobileOpen}
 									aria-controls="jobseeker-mobile-navigation"
 								>
@@ -197,7 +199,7 @@ export function JobSeekerShell({
 								</p>
 								<p className="mt-0.5 text-sm font-bold text-[#34495E]">
 									{pathname === "/dashboard/pencari-kerja"
-										? "Dashboard"
+										? "Ringkasan"
 										: items.find(
 												(item) =>
 													pathname.startsWith(item.href) &&

@@ -22,6 +22,7 @@ export type IndonesiaRegionValue = {
 type Props = {
   value: IndonesiaRegionValue;
   onChange: (value: IndonesiaRegionValue) => void;
+  errors?: Partial<Record<keyof IndonesiaRegionValue, string>>;
 };
 
 type RegionState = {
@@ -141,6 +142,8 @@ function RegionField({
   selected,
   loading,
   disabled,
+  invalid,
+  error,
   onSelect,
 }: {
   id: string;
@@ -150,6 +153,8 @@ function RegionField({
   selected?: RegionOption;
   loading: boolean;
   disabled: boolean;
+  invalid?: boolean;
+  error?: string;
   onSelect: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -256,7 +261,8 @@ function RegionField({
                 : undefined
             }
             autoComplete="off"
-            className={inputClass}
+            className={`${inputClass} ${invalid ? "!border-red-400 focus:!border-red-500" : ""}`}
+            aria-invalid={Boolean(invalid)}
             value={open ? query : displayValue}
             placeholder={
               loading
@@ -334,11 +340,12 @@ function RegionField({
           </div>
         )}
       </div>
+      {error && <p className="text-[11px] leading-4 text-red-600">{error}</p>}
     </div>
   );
 }
 
-export function IndonesiaRegionSelect({ value, onChange }: Props) {
+export function IndonesiaRegionSelect({ value, onChange, errors }: Props) {
   const provinceData = useRegions("provinces");
   const selectedProvince = useMemo(
     () => findRegion(provinceData.options, value.province),
@@ -419,6 +426,8 @@ export function IndonesiaRegionSelect({ value, onChange }: Props) {
         selected={selectedProvince}
         loading={provinceData.loading}
         disabled={false}
+        invalid={Boolean(errors?.province)}
+        error={errors?.province}
         onSelect={selectProvince}
       />
 
@@ -430,6 +439,8 @@ export function IndonesiaRegionSelect({ value, onChange }: Props) {
         selected={selectedRegency}
         loading={regencyData.loading}
         disabled={!selectedProvince}
+        invalid={Boolean(errors?.city)}
+        error={errors?.city}
         onSelect={selectRegency}
       />
 
@@ -441,6 +452,8 @@ export function IndonesiaRegionSelect({ value, onChange }: Props) {
         selected={selectedDistrict}
         loading={districtData.loading}
         disabled={!selectedRegency}
+        invalid={Boolean(errors?.district)}
+        error={errors?.district}
         onSelect={selectDistrict}
       />
 
@@ -452,6 +465,8 @@ export function IndonesiaRegionSelect({ value, onChange }: Props) {
         selected={selectedVillage}
         loading={villageData.loading}
         disabled={!selectedDistrict}
+        invalid={Boolean(errors?.village)}
+        error={errors?.village}
         onSelect={selectVillage}
       />
 
