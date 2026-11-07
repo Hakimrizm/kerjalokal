@@ -4,107 +4,123 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 export function LoginForm({
-	className,
-	...props
+  className,
+  ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [error, setError] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(false);
-	const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-	const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		const supabase = createClient();
-		setIsLoading(true);
-		setError(null);
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const supabase = createClient();
+    setIsLoading(true);
+    setError(null);
 
-		try {
-			const { error } = await supabase.auth.signInWithPassword({
-				email,
-				password,
-			});
-			if (error) throw error;
-			// Update this route to redirect to an authenticated route. The user already has an active session.
-			router.push("/protected");
-		} catch (error: unknown) {
-			setError(error instanceof Error ? error.message : "An error occurred");
-		} finally {
-			setIsLoading(false);
-		}
-	};
+    try {
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (loginError) throw loginError;
 
-	return (
-		<div className={cn("flex flex-col gap-6", className)} {...props}>
-			<Card>
-				<CardHeader>
-					<CardTitle className="text-2xl">Login</CardTitle>
-					<CardDescription>
-						Masukan Email Anda Untuk Masuk Ke Akun.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<form onSubmit={handleLogin}>
-						<div className="flex flex-col gap-6">
-							<div className="grid gap-2">
-								<Label htmlFor="email">Email</Label>
-								<Input
-									id="email"
-									type="email"
-									placeholder="m@example.com"
-									required
-									value={email}
-									onChange={(e) => setEmail(e.target.value)}
-								/>
-							</div>
-							<div className="grid gap-2">
-								<div className="flex items-center">
-									<Label htmlFor="password">Password</Label>
-									<Link
-										href="/auth/forgot-password"
-										className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-									>
-										Lupa Password?
-									</Link>
-								</div>
-								<Input
-									id="password"
-									type="password"
-									required
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-								/>
-							</div>
-							{error && <p className="text-sm text-red-500">{error}</p>}
-							<Button type="submit" className="w-full" disabled={isLoading}>
-								{isLoading ? "Logging in..." : "Login"}
-							</Button>
-						</div>
-						<div className="mt-4 text-center text-sm">
-							Belum punya akun?{" "}
-							<Link
-								href="/auth/sign-up"
-								className="underline underline-offset-4"
-							>
-								Sign up
-							</Link>
-						</div>
-					</form>
-				</CardContent>
-			</Card>
-		</div>
-	);
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (!roleData || roleData.role === "job_seeker") {
+        const { data: jobProfile } = await supabase
+          .from("job_seeker_profiles")
+          .select("profile_completed")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        router.replace(jobProfile?.profile_completed ? "/dashboard/pencari-kerja" : "/onboarding/job-seeker");
+      } else {
+        // Role lain akan diarahkan ke area terlindungi sampai dashboard masing-masing tersedia.
+        router.replace("/protected");
+      }
+      router.refresh();
+    } catch (caughtError: unknown) {
+      setError(caughtError instanceof Error ? caughtError.message : "Email atau password tidak sesuai.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card className="border-[#BDC3C7]/70 bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-2xl font-extrabold text-[#2C3E50]">Masuk ke KerjaLokal</CardTitle>
+          <CardDescription className="text-[#7F8C8D]">
+            Masukkan email dan password untuk melanjutkan.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleLogin}>
+            <div className="flex flex-col gap-5">
+              <div className="grid gap-2">
+                <Label htmlFor="email" className="text-[#34495E]">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="nama@email.com"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="h-11 border-[#BDC3C7] focus-visible:ring-[#34495E]"
+                />
+              </div>
+              <div className="grid gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="password" className="text-[#34495E]">Password</Label>
+                  <Link href="/auth/forgot-password" className="text-xs font-semibold text-[#7F8C8D] underline-offset-4 hover:text-[#2C3E50] hover:underline">
+                    Lupa Password?
+                  </Link>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="h-11 border-[#BDC3C7] focus-visible:ring-[#34495E]"
+                />
+              </div>
+              {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+              <Button type="submit" className="h-11 w-full bg-[#2C3E50] font-bold text-white hover:bg-[#34495E]" disabled={isLoading}>
+                {isLoading ? "Memeriksa akun..." : "Masuk"}
+              </Button>
+            </div>
+            <div className="mt-5 text-center text-sm text-[#53616D]">
+              Belum punya akun?{" "}
+              <Link href="/auth/sign-up" className="font-bold text-[#2C3E50] underline underline-offset-4">
+                Daftar sebagai pencari kerja
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

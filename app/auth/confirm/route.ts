@@ -1,30 +1,63 @@
 import { createClient } from "@/lib/supabase/server";
 import { type EmailOtpType } from "@supabase/supabase-js";
-import { redirect } from "next/navigation";
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const token_hash = searchParams.get("token_hash");
+  const { searchParams, origin } = new URL(request.url);
+
+  // Default Supabase email template returns a PKCE authorization code.
+  const code = searchParams.get("code");
+
+  // These parameters are used if a custom email template is enabled later.
+  const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const next = searchParams.get("next") ?? "/";
 
-  if (token_hash && type) {
-    const supabase = await createClient();
+  const requestedNext = searchParams.get("next") ?? "/onboarding/job-seeker";
 
-    const { error } = await supabase.auth.verifyOtp({
-      type,
-      token_hash,
-    });
+  // Only allow internal paths to prevent open redirects.
+  const next =
+    requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : "/onboarding/job-seeker";
+
+  const supabase = await createClient();
+
+  // Flow 1: default Supabase template ({{ .ConfirmationURL }}).
+  // Supabase verifies the email, then redirects here with ?code=...
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
     if (!error) {
-      // redirect user to specified redirect URL or root of app
-      redirect(next);
-    } else {
-      // redirect the user to an error page with some instructions
-      redirect(`/auth/error?error=${error?.message}`);
+      return NextResponse.redirect(new URL(next, origin));
     }
+
+    const errorUrl = new URL("/auth/error", origin);
+    errorUrl.searchParams.set("error", error.message);
+    return NextResponse.redirect(errorUrl);
   }
 
-  // redirect the user to an error page with some instructions
-  redirect(`/auth/error?error=No token hash or type`);
+  // Flow 2: custom template using {{ .TokenHash }}.
+  // Kept for compatibility if custom SMTP/template editing is enabled later.
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({
+      type,
+      token_hash: tokenHash,
+    });
+
+    if (!error) {
+      return NextResponse.redirect(new URL(next, origin));
+    }
+
+    const errorUrl = new URL("/auth/error", origin);
+    errorUrl.searchParams.set("error", error.message);
+    return NextResponse.redirect(errorUrl);
+  }
+
+  const errorUrl = new URL("/auth/error", origin);
+  errorUrl.searchParams.set(
+    "error",
+    "Link verifikasi tidak memiliki code atau token yang diperlukan. Silakan minta email verifikasi baru.",
+  );
+
+  return NextResponse.redirect(errorUrl);
 }
