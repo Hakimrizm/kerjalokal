@@ -3,30 +3,28 @@
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { notify, notifyInvalidForm, resetInvalidForm } from "@/lib/notify";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, type FormEvent, type ComponentPropsWithoutRef } from "react";
+import {
+	ArrowRight,
+	Eye,
+	EyeOff,
+	LoaderCircle,
+	LockKeyhole,
+	Mail,
+} from "lucide-react";
 
-type LoginFormProps = React.ComponentPropsWithoutRef<"div"> & {
-	nextPath?: string;
-};
+type LoginFormProps = ComponentPropsWithoutRef<"div">;
 
-export function LoginForm({ className, nextPath, ...props }: LoginFormProps) {
+export function LoginForm({ className, ...props }: LoginFormProps) {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [showPassword, setShowPassword] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const router = useRouter();
+	const searchParams = useSearchParams();
 
 	const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -40,6 +38,7 @@ export function LoginForm({ className, nextPath, ...props }: LoginFormProps) {
 					email: email.trim().toLowerCase(),
 					password,
 				});
+
 			if (loginError) throw loginError;
 
 			const { data: roleData, error: roleError } = await supabase
@@ -84,10 +83,14 @@ export function LoginForm({ className, nextPath, ...props }: LoginFormProps) {
 
 				if (jobProfileError) throw jobProfileError;
 
+				const requestedNextPath = searchParams.get("next");
 				const safeNextPath =
-					nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
-						? nextPath
+					requestedNextPath &&
+					requestedNextPath.startsWith("/") &&
+					!requestedNextPath.startsWith("//")
+						? requestedNextPath
 						: undefined;
+
 				router.replace(
 					jobProfile?.profile_completed
 						? (safeNextPath ?? "/dashboard/pencari-kerja")
@@ -104,6 +107,7 @@ export function LoginForm({ className, nextPath, ...props }: LoginFormProps) {
 					"Role akun tidak dikenali. Hubungi administrator KerjaLokal.",
 				);
 			}
+
 			notify("success", "Berhasil masuk ke akun KerjaLokal.");
 			router.refresh();
 		} catch (caughtError: unknown) {
@@ -111,6 +115,7 @@ export function LoginForm({ className, nextPath, ...props }: LoginFormProps) {
 				caughtError instanceof Error
 					? caughtError.message
 					: "Email atau password tidak sesuai.";
+
 			setError(message);
 			notify("error", message);
 		} finally {
@@ -119,106 +124,168 @@ export function LoginForm({ className, nextPath, ...props }: LoginFormProps) {
 	};
 
 	return (
-		<div className={cn("flex flex-col gap-6", className)} {...props}>
-			<Card className="border-[#BDC3C7]/70 bg-white shadow-sm">
-				<CardHeader>
-					<CardTitle className="text-2xl font-extrabold text-[#2C3E50]">
-						Masuk ke KerjaLokal
-					</CardTitle>
-					<CardDescription className="text-[#7F8C8D]">
-						Masukkan email dan password untuk melanjutkan.
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<form
-						onSubmit={handleLogin}
-						onInvalidCapture={(event) =>
-							notifyInvalidForm(
-								event.currentTarget,
-								"Masukkan email dan password dengan format yang benar.",
-							)
-						}
-						onInputCapture={(event) => resetInvalidForm(event.currentTarget)}
+		<div className={cn("w-full", className)} {...props}>
+			<div className="mb-7">
+				<span className="badge badge-outline border-[#BDC3C7] bg-[#ECF0F1] px-3 py-3 text-[11px] font-bold tracking-wide text-[#34495E]">
+					AKUN KERJALOKAL
+				</span>
+
+				<h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[#2C3E50] sm:text-[2.1rem]">
+					Selamat datang kembali.
+				</h1>
+
+				<p className="mt-2 text-sm leading-6 text-[#7F8C8D]">
+					Masuk untuk menemukan peluang, mengelola lowongan, dan melanjutkan
+					aktivitasmu di KerjaLokal.
+				</p>
+			</div>
+
+			<form
+				onSubmit={handleLogin}
+				onInvalidCapture={(event) =>
+					notifyInvalidForm(
+						event.currentTarget,
+						"Masukkan email dan password dengan format yang benar.",
+					)
+				}
+				onInputCapture={(event) => resetInvalidForm(event.currentTarget)}
+				className="space-y-4"
+			>
+				<div className="form-control w-full">
+					<label className="label pb-2" htmlFor="email">
+						<span className="label-text text-sm font-bold text-[#34495E]">
+							Email <span className="text-red-500">*</span>
+						</span>
+					</label>
+
+					<label
+						className={cn(
+							"input input-bordered flex h-12 items-center gap-3 rounded-xl bg-white transition-all focus-within:outline-none",
+							error
+								? "border-red-400 focus-within:border-red-500"
+								: "border-[#BDC3C7] focus-within:border-[#34495E]",
+						)}
 					>
-						<div className="flex flex-col gap-5">
-							<div className="grid gap-2">
-								<Label htmlFor="email" className="text-[#34495E]">
-									Email
-								</Label>
-								<Input
-									id="email"
-									type="email"
-									placeholder="nama@email.com"
-									autoComplete="email"
-									required
-									value={email}
-									aria-invalid={Boolean(error)}
-									onChange={(event) => {
-										setError(null);
-										setEmail(event.target.value);
-									}}
-									className="h-11 border-[#BDC3C7] focus-visible:ring-[#34495E]"
-								/>
-							</div>
-							<div className="grid gap-2">
-								<div className="flex items-center justify-between gap-2">
-									<Label htmlFor="password" className="text-[#34495E]">
-										Password
-									</Label>
-									<Link
-										href="/auth/forgot-password"
-										className="text-xs font-semibold text-[#7F8C8D] underline-offset-4 hover:text-[#2C3E50] hover:underline"
-									>
-										Lupa Password?
-									</Link>
-								</div>
-								<Input
-									id="password"
-									type="password"
-									autoComplete="current-password"
-									required
-									value={password}
-									aria-invalid={Boolean(error)}
-									onChange={(event) => {
-										setError(null);
-										setPassword(event.target.value);
-									}}
-									className="h-11 border-[#BDC3C7] focus-visible:ring-[#34495E]"
-								/>
-							</div>
-							{error && (
-								<p role="alert" className="text-sm text-red-600">
-									{error}
-								</p>
-							)}
-							<Button
-								type="submit"
-								className="h-11 w-full bg-[#2C3E50] font-bold text-white hover:bg-[#34495E]"
-								disabled={isLoading}
-							>
-								{isLoading ? "Memeriksa akun..." : "Masuk"}
-							</Button>
-						</div>
-						<div className="mt-5 text-center text-sm text-[#53616D]">
-							Belum punya akun?{" "}
-							<Link
-								href="/auth/sign-up"
-								className="font-bold text-[#2C3E50] underline underline-offset-4"
-							>
-								Pencari kerja
-							</Link>
-							{" · "}
-							<Link
-								href="/auth/sign-up/employer"
-								className="font-bold text-[#2C3E50] underline underline-offset-4"
-							>
-								Pelaku usaha
-							</Link>
-							{" · "}
-						</div>
-					</form>
-				</CardContent>
-			</Card>
+						<Mail size={18} className="shrink-0 text-[#7F8C8D]" />
+						<input
+							id="email"
+							type="email"
+							placeholder="nama@email.com"
+							autoComplete="email"
+							required
+							value={email}
+							aria-invalid={Boolean(error)}
+							onChange={(event) => {
+								setError(null);
+								setEmail(event.target.value);
+							}}
+							className="grow text-sm text-[#2C3E50] placeholder:text-[#7F8C8D]/70 focus:outline-none"
+						/>
+					</label>
+				</div>
+
+				<div className="form-control w-full">
+					<div className="mb-2 flex items-center justify-between gap-2">
+						<label htmlFor="password">
+							<span className="text-sm font-bold text-[#34495E]">
+								Password <span className="text-red-500">*</span>
+							</span>
+						</label>
+
+						<Link
+							href="/auth/forgot-password"
+							className="text-xs font-semibold text-[#7F8C8D] underline-offset-4 transition hover:text-[#2C3E50] hover:underline"
+						>
+							Lupa Password?
+						</Link>
+					</div>
+
+					<label
+						className={cn(
+							"input input-bordered flex h-12 items-center gap-3 rounded-xl bg-white transition-all focus-within:outline-none",
+							error
+								? "border-red-400 focus-within:border-red-500"
+								: "border-[#BDC3C7] focus-within:border-[#34495E]",
+						)}
+					>
+						<LockKeyhole size={18} className="shrink-0 text-[#7F8C8D]" />
+						<input
+							id="password"
+							type={showPassword ? "text" : "password"}
+							autoComplete="current-password"
+							required
+							value={password}
+							aria-invalid={Boolean(error)}
+							onChange={(event) => {
+								setError(null);
+								setPassword(event.target.value);
+							}}
+							placeholder="Masukkan password"
+							className="grow text-sm text-[#2C3E50] placeholder:text-[#7F8C8D]/70 focus:outline-none"
+						/>
+						<button
+							type="button"
+							className="btn btn-ghost btn-xs btn-square rounded-lg text-[#7F8C8D] hover:bg-[#ECF0F1]"
+							onClick={() => setShowPassword((visible) => !visible)}
+							aria-label={
+								showPassword ? "Sembunyikan password" : "Tampilkan password"
+							}
+						>
+							{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+						</button>
+					</label>
+				</div>
+
+				{error && (
+					<div
+						role="alert"
+						className="alert alert-error rounded-xl border border-[#F0CACA] bg-[#FFF6F6] py-3 text-sm text-[#A34E4E]"
+					>
+						<span>{error}</span>
+					</div>
+				)}
+
+				<button
+					type="submit"
+					disabled={isLoading}
+					className="btn btn-primary mt-2 h-12 min-h-12 w-full rounded-xl border-0 bg-[#2C3E50] text-sm font-bold text-white shadow-lg shadow-[#2C3E50]/15 transition-all hover:-translate-y-0.5 hover:bg-[#34495E] disabled:translate-y-0 disabled:opacity-70"
+				>
+					{isLoading ? (
+						<>
+							<LoaderCircle size={18} className="animate-spin" />
+							Memeriksa akun...
+						</>
+					) : (
+						<>
+							Masuk ke KerjaLokal
+							<ArrowRight size={17} />
+						</>
+					)}
+				</button>
+			</form>
+
+			<div className="divider my-5 text-[10px] text-[#7F8C8D]">
+				BELUM MEMILIKI AKUN?
+			</div>
+
+			<div className="space-y-3 text-center">
+				<p className="text-sm text-[#53616D]">
+					Daftar sebagai{" "}
+					<Link
+						href="/auth/sign-up"
+						className="font-extrabold text-[#2C3E50] underline decoration-[#BDC3C7] underline-offset-4 transition hover:text-[#7F8C8D]"
+					>
+						Pencari Kerja
+					</Link>
+					{" atau "}
+					<Link
+						href="/auth/sign-up/employer"
+						className="font-extrabold text-[#2C3E50] underline decoration-[#BDC3C7] underline-offset-4 transition hover:text-[#7F8C8D]"
+					>
+						Pelaku Usaha
+					</Link>
+				</p>
+			</div>
 		</div>
 	);
 }
