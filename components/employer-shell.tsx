@@ -63,7 +63,7 @@ export function EmployerShell({
             active
               ? "bg-[#2C3E50] text-white"
               : "text-[#667681] hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
-          } ${mobile ? "whitespace-nowrap" : ""}`}
+          } ${mobile ? "w-full justify-start whitespace-nowrap" : ""}`}
         >
           <Icon size={18} className={active ? "text-white" : "text-[#8A969D] group-hover:text-[#34495E]"} />
           <span className="flex-1">{item.label}</span>
@@ -137,11 +137,13 @@ export function EmployerShell({
                   type="button"
                   onClick={() => setMobileOpen((value) => !value)}
                   className="btn btn-ghost btn-square btn-sm rounded-xl lg:hidden"
-                  aria-label="Buka menu"
+                  aria-label={mobileOpen ? "Tutup menu navigasi" : "Buka menu navigasi"}
+                  aria-expanded={mobileOpen}
+                  aria-controls="employer-mobile-navigation"
                 >
                   {mobileOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
-                <div className="lg:hidden">
+                <div className="flex items-center gap-2 lg:hidden">
                   <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2C3E50] text-white">
                     <BriefcaseBusiness size={19} />
                   </span>
@@ -184,31 +186,18 @@ export function EmployerShell({
               </div>
             </div>
             {mobileOpen && (
-              <div className="border-t border-[#EEF1F2] bg-white px-3 py-3 lg:hidden">
-                <nav className="grid grid-cols-2 gap-2">{navLinks(true)}</nav>
+              <div
+                id="employer-mobile-navigation"
+                className="border-t border-[#EEF1F2] bg-white px-4 py-3 shadow-lg lg:hidden"
+              >
+                <p className="mb-2 px-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#9AA5AB]">
+                  Menu pelaku usaha
+                </p>
+                <nav aria-label="Navigasi pelaku usaha" className="space-y-1">
+                  {navLinks(true)}
+                </nav>
               </div>
             )}
-            <nav className="flex gap-1 overflow-x-auto border-t border-[#EEF1F2] px-4 py-2 lg:hidden">
-              {items.map((item) => {
-                const active = item.href === "/dashboard/pelaku-usaha"
-                  ? pathname === "/dashboard/pelaku-usaha"
-                  : pathname.startsWith(item.href);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition ${
-                      active ? "bg-[#2C3E50] text-white" : "text-[#53616D] hover:bg-[#ECF0F1]"
-                    }`}
-                  >
-                    <Icon size={14} className="mr-1" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
           </header>
 
           <main className="mx-auto w-full max-w-[1250px] px-4 py-6 sm:px-7 sm:py-8 lg:px-9 lg:py-9">

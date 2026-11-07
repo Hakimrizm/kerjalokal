@@ -79,7 +79,7 @@ export function JobSeekerShell({
 						active
 							? "bg-[#2C3E50] text-white shadow-md shadow-[#2C3E50]/10"
 							: "text-[#667681] hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
-					} ${mobile ? "whitespace-nowrap" : ""}`}
+					} ${mobile ? "w-full justify-start whitespace-nowrap" : ""}`}
 				>
 					<Icon
 						size={18}
@@ -178,7 +178,9 @@ export function JobSeekerShell({
 									type="button"
 									onClick={() => setMobileOpen((value) => !value)}
 									className="btn btn-ghost btn-square btn-sm rounded-xl"
-									aria-label="Buka menu"
+									aria-label={mobileOpen ? "Tutup menu navigasi" : "Buka menu navigasi"}
+									aria-expanded={mobileOpen}
+									aria-controls="jobseeker-mobile-navigation"
 								>
 									{mobileOpen ? <X size={20} /> : <Menu size={20} />}
 								</button>
@@ -250,36 +252,20 @@ export function JobSeekerShell({
 								</button>
 							</div>
 						</div>
-						{/* Mobile navigation */}
+						{/* Mobile dropdown navigation */}
 						{mobileOpen && (
-							<div className="border-t border-[#EEF1F2] bg-white px-3 py-3 lg:hidden">
-								<nav className="grid grid-cols-2 gap-2">{navLinks(true)}</nav>
+							<div
+								id="jobseeker-mobile-navigation"
+								className="border-t border-[#EEF1F2] bg-white px-4 py-3 shadow-lg lg:hidden"
+							>
+								<p className="mb-2 px-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#9AA5AB]">
+									Menu pencari kerja
+								</p>
+								<nav aria-label="Navigasi pencari kerja" className="space-y-1">
+									{navLinks(true)}
+								</nav>
 							</div>
 						)}
-						<nav className="flex gap-1 overflow-x-auto border-t border-[#EEF1F2] px-4 py-2 lg:hidden">
-							{items.map((item) => {
-								const active =
-									item.href === "/dashboard/pencari-kerja"
-										? pathname === "/dashboard/pencari-kerja"
-										: pathname.startsWith(item.href);
-								const Icon = item.icon;
-								return (
-									<Link
-										key={item.href}
-										href={item.href}
-										onClick={() => setMobileOpen(false)}
-										className={`whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition ${
-											active
-												? "bg-[#2C3E50] text-white"
-												: "text-[#53616D] hover:bg-[#ECF0F1]"
-										}`}
-									>
-										<Icon size={14} className="mr-1" />
-										{item.label}
-									</Link>
-								);
-							})}
-						</nav>
 					</header>
 
 					<main className="mx-auto w-full max-w-[1250px] px-4 py-6 sm:px-7 sm:py-8 lg:px-9 lg:py-9">
