@@ -53,7 +53,7 @@ export function EmployerShell({
 	const currentPathname = hasMounted ? pathname : "";
 
 	const items: NavItem[] = [
-		{ href: "/dashboard/pelaku-usaha", label: "Ringkasan", icon: Building2 },
+		{ href: "/dashboard/pelaku-usaha", label: "Dashboard", icon: Building2 },
 		{
 			href: "/dashboard/pelaku-usaha/profil",
 			label: "Profil Usaha",
@@ -195,7 +195,7 @@ export function EmployerShell({
 									</p>
 									<p className="mt-0.5 text-sm font-bold text-[#34495E]">
 										{currentPathname === "/dashboard/pelaku-usaha"
-											? "Ringkasan usaha"
+											? "Dashboard usaha"
 											: items.find(
 													(item) =>
 														currentPathname.startsWith(item.href) &&

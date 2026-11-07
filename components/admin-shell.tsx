@@ -210,7 +210,7 @@ export function AdminShell({
 									</p>
 									<p className="mt-0.5 text-sm font-extrabold">
 										{pathname === "/admin"
-											? "Ringkasan"
+											? "Dashboard"
 											: visibleItems.find(
 													(item) =>
 														pathname.startsWith(item.href) &&

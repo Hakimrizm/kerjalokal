@@ -199,7 +199,7 @@ export function JobSeekerShell({
 								</p>
 								<p className="mt-0.5 text-sm font-bold text-[#34495E]">
 									{pathname === "/dashboard/pencari-kerja"
-										? "Ringkasan"
+										? "Dashboard"
 										: items.find(
 												(item) =>
 													pathname.startsWith(item.href) &&
