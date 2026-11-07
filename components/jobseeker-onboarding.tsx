@@ -11,6 +11,7 @@ import {
 	type ReactNode,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { IndonesiaRegionSelect } from "@/components/indonesia-region-select";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -1485,68 +1486,17 @@ export function JobSeekerOnboarding({
 												</div>
 											</div>
 											<div className="grid gap-4 sm:grid-cols-2">
-												<Field
-													label="Provinsi"
-													required
-													htmlFor="identity-province"
-												>
-													<input
-														id="identity-province"
-														className={inputClass}
-														value={identity.province}
-														onChange={(event) =>
-															updateIdentity("province", event.target.value)
-														}
-														placeholder="Contoh: Jawa Barat"
-														autoComplete="address-level1"
-													/>
-												</Field>
-												<Field
-													label="Kota / Kabupaten"
-													required
-													htmlFor="identity-city"
-												>
-													<input
-														id="identity-city"
-														className={inputClass}
-														value={identity.city}
-														onChange={(event) =>
-															updateIdentity("city", event.target.value)
-														}
-														placeholder="Contoh: Kota Bandung"
-														autoComplete="address-level2"
-													/>
-												</Field>
-												<Field
-													label="Kecamatan"
-													required
-													htmlFor="identity-district"
-												>
-													<input
-														id="identity-district"
-														className={inputClass}
-														value={identity.district}
-														onChange={(event) =>
-															updateIdentity("district", event.target.value)
-														}
-														placeholder="Nama kecamatan"
-													/>
-												</Field>
-												<Field
-													label="Desa / Kelurahan"
-													required
-													htmlFor="identity-village"
-												>
-													<input
-														id="identity-village"
-														className={inputClass}
-														value={identity.village}
-														onChange={(event) =>
-															updateIdentity("village", event.target.value)
-														}
-														placeholder="Nama desa atau kelurahan"
-													/>
-												</Field>
+												<IndonesiaRegionSelect
+													value={{
+														province: identity.province,
+														city: identity.city,
+														district: identity.district,
+														village: identity.village,
+													}}
+													onChange={(nextValue) =>
+														setIdentity((current) => ({ ...current, ...nextValue }))
+													}
+												/>
 												<div className="sm:col-span-2">
 													<Field
 														label="Alamat lengkap"
