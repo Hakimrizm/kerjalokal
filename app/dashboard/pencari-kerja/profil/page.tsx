@@ -167,39 +167,41 @@ export default async function JobSeekerProfilePage() {
 		: { data: null };
 
 	return (
-		<div className="space-y-6">
-			<section className="overflow-hidden rounded-[26px] bg-white shadow-sm">
-				<div className="h-28 bg-gradient-to-r from-[#2C3E50] via-[#34495E] to-[#7F8C8D] sm:h-36" />
-				<div className="px-5 pb-6 sm:px-8">
-					<div className="-mt-11 flex flex-col gap-4 sm:-mt-12 sm:flex-row sm:items-end sm:justify-between">
-						<div className="flex min-w-0 items-end gap-4">
+		<div className="w-full min-w-0 space-y-5 sm:space-y-6">
+			<section className="min-w-0 overflow-hidden rounded-[24px] bg-white shadow-sm sm:rounded-[26px]">
+				<div className="h-24 bg-gradient-to-r from-[#2C3E50] via-[#34495E] to-[#7F8C8D] sm:h-36" />
+				<div className="px-4 pb-5 sm:px-8 sm:pb-6">
+					<div className="-mt-10 flex flex-col items-center gap-4 text-center sm:-mt-12 sm:flex-row sm:items-end sm:justify-between sm:text-left">
+						<div className="flex w-full min-w-0 flex-col items-center gap-3 text-center sm:w-auto sm:flex-row sm:items-end sm:gap-4 sm:text-left">
 							{signedPhoto?.signedUrl ? (
 								<img
 									src={signedPhoto.signedUrl}
 									alt={`Foto profil ${name}`}
-									className="h-24 w-24 rounded-2xl border-4 border-white object-cover shadow-md sm:h-28 sm:w-28"
+									className="h-20 w-20 shrink-0 rounded-2xl border-4 border-white object-cover shadow-md sm:h-28 sm:w-28"
 								/>
 							) : (
-								<span className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl border-4 border-white bg-[#DCE4E8] text-2xl font-extrabold text-[#34495E] shadow-md sm:h-28 sm:w-28">
+								<span className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl border-4 border-white bg-[#DCE4E8] text-2xl font-extrabold text-[#34495E] shadow-md sm:h-28 sm:w-28">
 									{initials || "PK"}
 								</span>
 							)}
-							<div className="min-w-0 pb-1">
-								<span className="badge badge-outline border-[#DCE3E6] bg-[#F7F9FA] text-[10px] font-bold text-[#53616D]">
+							<div className="flex min-w-0 w-full flex-col items-center pb-0 text-center sm:w-auto sm:flex-1 sm:items-start sm:pb-1 sm:text-left">
+								<span className="inline-flex max-w-full -mt-2 items-center rounded-full border border-[#DCE3E6] bg-[#F7F9FA] px-2.5 py-1 text-[9px] font-bold leading-tight text-[#53616D] sm:mt-0 sm:text-[10px]">
 									PROFIL PENCARI KERJA
 								</span>
-								<h1 className="mt-2 truncate text-xl font-extrabold tracking-tight text-[#2C3E50] sm:text-2xl">
+								<h1 className="mt-1.5 line-clamp-2 break-words text-lg font-extrabold leading-snug tracking-tight text-[#2C3E50] [overflow-wrap:anywhere] sm:mt-2 sm:truncate sm:text-2xl">
 									{name}
 								</h1>
-								<p className="mt-1 flex items-center gap-1.5 text-xs text-[#7F8C8D]">
-									<MapPin size={13} />
-									{location || "Lokasi belum ditambahkan"}
+								<p className="mt-1 flex max-w-full items-start justify-center gap-1.5 break-words text-[11px] leading-4 text-[#7F8C8D] sm:justify-start sm:items-center sm:text-xs">
+									<MapPin size={13} className="mt-0.5 shrink-0 sm:mt-0" />
+									<span className="min-w-0">
+										{location || "Lokasi belum ditambahkan"}
+									</span>
 								</p>
 							</div>
 						</div>
 						<Link
 							href={editHref("identity")}
-							className="btn btn-primary min-h-11 rounded-xl border-0 bg-[#2C3E50] px-5 text-xs font-bold text-white hover:bg-[#34495E]"
+							className="btn btn-primary min-h-11 w-full max-w-sm shrink-0 rounded-xl border-0 bg-[#2C3E50] px-5 text-xs font-bold text-white hover:bg-[#34495E] sm:w-auto"
 						>
 							<Pencil size={15} /> Edit Profil
 						</Link>
@@ -208,16 +210,16 @@ export default async function JobSeekerProfilePage() {
 				</div>
 			</section>
 
-			<div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
-				<div className="space-y-5">
-					<section className="overflow-hidden rounded-2xl border border-[#E2E7E9] bg-white shadow-sm">
+			<div className="mt-5 grid min-w-0 items-start gap-4 sm:mt-6 sm:gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
+				<div className="min-w-0 space-y-4 sm:space-y-5">
+					<section className="min-w-0 overflow-hidden rounded-2xl border border-[#E2E7E9] bg-white shadow-sm">
 						<SectionHeading
 							icon={UserRound}
 							title="Informasi pribadi"
 							subtitle="Identitas dan alamat tempat tinggal"
 							href={editHref("identity")}
 						/>
-						<div className="grid gap-x-8 gap-y-5 p-5 sm:grid-cols-2 sm:p-6">
+						<div className="grid min-w-0 gap-x-8 gap-y-4 p-4 sm:grid-cols-2 sm:gap-y-5 sm:p-6">
 							{[
 								["Nama lengkap", profile?.full_name || "Belum diisi"],
 								["Email", user.email || "—"],
@@ -243,7 +245,7 @@ export default async function JobSeekerProfilePage() {
 								<p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">
 									Alamat lengkap
 								</p>
-								<p className="mt-1.5 text-sm leading-6 text-[#53616D]">
+								<p className="mt-1.5 break-words text-sm leading-6 text-[#53616D]">
 									{profile?.address || "Belum diisi"}
 								</p>
 							</div>
@@ -462,7 +464,7 @@ export default async function JobSeekerProfilePage() {
 					</section>
 				</div>
 
-				<aside className="space-y-5">
+				<aside className="min-w-0 space-y-4 sm:space-y-5">
 					<section className="rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm">
 						<div className="flex items-center gap-2">
 							<ShieldCheck size={17} className="text-[#53616D]" />
