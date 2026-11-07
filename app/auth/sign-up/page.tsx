@@ -120,20 +120,6 @@ export default function Page() {
 						</span>
 					</div>
 					<SignUpForm />
-					<div className="mt-5 rounded-xl border border-[#BDC3C7]/70 bg-white p-4">
-						<div className="flex items-center gap-3">
-							<span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#ECF0F1] text-[#34495E]">
-								<Building2 size={19} />
-							</span>
-							<div className="min-w-0 flex-1">
-								<p className="text-xs font-bold text-[#34495E]">Mewakili usaha atau UMKM?</p>
-								<p className="mt-1 text-[11px] leading-5 text-[#7F8C8D]">Buat akun khusus untuk memasang lowongan dan mengelola pelamar.</p>
-							</div>
-						</div>
-						<Link href="/auth/sign-up/employer" className="btn btn-outline btn-sm mt-3 w-full rounded-lg border-[#34495E] text-xs font-bold text-[#34495E] hover:bg-[#34495E] hover:text-white">
-							Daftar sebagai Pelaku Usaha
-						</Link>
-					</div>
 				</div>
 
 				<p className="pb-3 text-center text-[10px] leading-5 text-[#7F8C8D]">

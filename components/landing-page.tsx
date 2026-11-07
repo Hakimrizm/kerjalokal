@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import {
+	useEffect,
+	useMemo,
+	useState,
+	type CSSProperties,
+	type FormEvent,
+} from "react";
 import {
 	ArrowRight,
 	ArrowUpRight,
@@ -70,11 +76,11 @@ const features = [
 ];
 
 export function LandingPage({
-  jobs,
-  isAuthenticated,
+	jobs,
+	isAuthenticated,
 }: {
-  jobs: LandingJob[];
-  isAuthenticated: boolean;
+	jobs: LandingJob[];
+	isAuthenticated: boolean;
 }) {
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const [keyword, setKeyword] = useState("");
@@ -97,6 +103,87 @@ export function LandingPage({
 			return matchesKeyword && matchesDistrict;
 		});
 	}, [jobs, appliedKeyword, appliedDistrict]);
+
+	// Animasi elemen saat masuk ke viewport. Elemen hanya dianimasikan sekali.
+	useEffect(() => {
+		const elements = Array.from(
+			document.querySelectorAll<HTMLElement>("[data-reveal]"),
+		).filter((element) => element.dataset.revealed !== "true");
+
+		if (elements.length === 0) return;
+
+		const revealImmediately = () => {
+			elements.forEach((element) => {
+				element.dataset.revealed = "true";
+			});
+		};
+
+		const prefersReducedMotion = window.matchMedia(
+			"(prefers-reduced-motion: reduce)",
+		).matches;
+
+		if (prefersReducedMotion || !("IntersectionObserver" in window)) {
+			revealImmediately();
+			return;
+		}
+
+		elements.forEach((element) => {
+			const direction = element.dataset.reveal;
+			element.classList.add(
+				"opacity-0",
+				"transition-all",
+				"duration-700",
+				"ease-out",
+				"will-change-transform",
+			);
+
+			if (direction === "fade-left") {
+				element.classList.add("translate-x-8");
+			} else if (direction === "fade-right") {
+				element.classList.add("-translate-x-8");
+			} else if (direction === "zoom") {
+				element.classList.add("scale-95");
+			} else {
+				element.classList.add("translate-y-8");
+			}
+
+			const delay = Number(element.dataset.revealDelay ?? 0);
+			element.style.transitionDelay = `${Math.max(0, delay)}ms`;
+		});
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				entries.forEach((entry) => {
+					if (!entry.isIntersecting) return;
+
+					const element = entry.target as HTMLElement;
+					element.classList.remove(
+						"opacity-0",
+						"translate-y-8",
+						"translate-x-8",
+						"-translate-x-8",
+						"scale-95",
+					);
+					element.classList.add(
+						"opacity-100",
+						"translate-y-0",
+						"translate-x-0",
+						"scale-100",
+					);
+					element.dataset.revealed = "true";
+					observer.unobserve(element);
+				});
+			},
+			{
+				threshold: 0.12,
+				rootMargin: "0px 0px -48px 0px",
+			},
+		);
+
+		elements.forEach((element) => observer.observe(element));
+
+		return () => observer.disconnect();
+	}, [filteredJobs]);
 
 	function handleSearch(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -280,7 +367,7 @@ export function LandingPage({
 				<div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[42%] bg-gradient-to-l from-[#34495E]/70 to-transparent lg:block" />
 
 				<div className="relative mx-auto grid max-w-7xl items-center gap-14 px-4 pb-24 pt-16 sm:px-6 sm:pb-28 sm:pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:px-8 lg:py-24">
-					<div className="relative z-10 max-w-2xl">
+					<div className="relative z-10 max-w-2xl" data-reveal="fade-up">
 						<div className="badge badge-outline mb-7 gap-2 border-white/25 bg-white/[0.07] px-4 py-3 text-[11px] font-semibold tracking-wide text-white">
 							<span className="h-2 w-2 rounded-full bg-[#BDC3C7]" />
 							PELUANG KERJA DARI LINGKUNGAN TERDEKAT
@@ -310,7 +397,8 @@ export function LandingPage({
 								href={isAuthenticated ? "/dashboard" : "/auth/login"}
 								className="btn btn-outline h-[52px] min-h-[52px] rounded-full border-white/35 px-7 text-sm font-bold text-white hover:border-white hover:bg-white/10 hover:text-white"
 							>
-								{isAuthenticated ? "Buka Dashboard" : "Sign in"} <ArrowRight size={17} />
+								{isAuthenticated ? "Buka Dashboard" : "Sign in"}{" "}
+								<ArrowRight size={17} />
 							</Link>
 						</div>
 
@@ -340,7 +428,10 @@ export function LandingPage({
 						</div>
 					</div>
 
-					<div className="relative mx-auto w-full max-w-[510px] lg:mr-0">
+					<div
+						className="relative mx-auto w-full max-w-[510px] lg:mr-0"
+						data-reveal="fade-left"
+					>
 						<div className="absolute -left-8 top-16 h-28 w-28 rounded-full bg-[#7F8C8D]/30 blur-3xl" />
 						<div className="absolute -bottom-8 -right-5 h-36 w-36 rounded-full bg-[#BDC3C7]/20 blur-3xl" />
 
@@ -468,7 +559,10 @@ export function LandingPage({
 			</section>
 
 			<section className="relative z-20 mx-auto -mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
-				<div className="rounded-[1.5rem] border border-primary/10 bg-white p-4 shadow-[0_18px_55px_rgba(44,62,80,0.12)] sm:p-6 lg:p-7">
+				<div
+					className="rounded-[1.5rem] border border-primary/10 bg-white p-4 shadow-[0_18px_55px_rgba(44,62,80,0.12)] sm:p-6 lg:p-7"
+					data-reveal="fade-up"
+				>
 					<div className="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
 						<div>
 							<p className="text-[11px] font-extrabold uppercase tracking-[0.17em] text-[#7F8C8D]">
@@ -525,9 +619,15 @@ export function LandingPage({
 									className="select select-bordered h-12 min-h-12 w-full rounded-xl border-[#BDC3C7]/80 bg-[#ECF0F1]/55 pl-11 pr-9 text-sm text-primary focus:border-primary focus:outline-none"
 								>
 									<option value="all">Semua kecamatan</option>
-									{Array.from(new Set(jobs.map((job) => job.district).filter(Boolean))).sort().map((item) => (
-										<option key={item} value={item}>{item}</option>
-									))}
+									{Array.from(
+										new Set(jobs.map((job) => job.district).filter(Boolean)),
+									)
+										.sort()
+										.map((item) => (
+											<option key={item} value={item}>
+												{item}
+											</option>
+										))}
 								</select>
 							</div>
 						</label>
@@ -546,7 +646,7 @@ export function LandingPage({
 
 			<section id="fitur" className="scroll-mt-[76px] py-24 sm:py-28">
 				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="mx-auto max-w-2xl text-center">
+					<div className="mx-auto max-w-2xl text-center" data-reveal="fade-up">
 						<span className="badge badge-outline border-primary/20 bg-white px-4 py-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-primary">
 							Kenapa KerjaLokal?
 						</span>
@@ -563,11 +663,13 @@ export function LandingPage({
 					</div>
 
 					<div className="mt-14 grid gap-5 md:grid-cols-3">
-						{features.map((feature) => {
+						{features.map((feature, index) => {
 							const Icon = feature.icon;
 							return (
 								<article
 									key={feature.number}
+									data-reveal="fade-up"
+									data-reveal-delay={index * 120}
 									className="card group border border-primary/10 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/5"
 								>
 									<div className="card-body p-7 sm:p-8">
@@ -605,7 +707,7 @@ export function LandingPage({
 			>
 				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 					<div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-						<div className="max-w-2xl">
+						<div className="max-w-2xl" data-reveal="fade-up">
 							<span className="badge badge-outline border-primary/20 bg-white px-4 py-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-primary">
 								Jelajahi peluang
 							</span>
@@ -640,9 +742,11 @@ export function LandingPage({
 					</div>
 
 					<div className="mt-4 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-						{filteredJobs.map((job) => (
+						{filteredJobs.map((job, index) => (
 							<article
 								key={job.id}
+								data-reveal="fade-up"
+								data-reveal-delay={(index % 4) * 90}
 								className="card border border-primary/10 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5"
 							>
 								<div className="card-body gap-4 p-5">
@@ -693,13 +797,20 @@ export function LandingPage({
 					</div>
 
 					{filteredJobs.length === 0 && (
-						<div className="mt-5 rounded-3xl border border-dashed border-primary/20 bg-white px-6 py-14 text-center">
+						<div
+							className="mt-5 rounded-3xl border border-dashed border-primary/20 bg-white px-6 py-14 text-center"
+							data-reveal="zoom"
+						>
 							<Search className="mx-auto text-[#7F8C8D]" size={30} />
 							<h3 className="mt-4 text-lg font-extrabold text-primary">
-								{jobs.length === 0 ? "Belum ada lowongan yang tayang" : "Belum ada lowongan yang cocok"}
+								{jobs.length === 0
+									? "Belum ada lowongan yang tayang"
+									: "Belum ada lowongan yang cocok"}
 							</h3>
 							<p className="mt-2 text-sm text-[#7F8C8D]">
-								{jobs.length === 0 ? "Lowongan yang diterbitkan pelaku usaha akan muncul di sini." : "Coba kata kunci atau wilayah lainnya."}
+								{jobs.length === 0
+									? "Lowongan yang diterbitkan pelaku usaha akan muncul di sini."
+									: "Coba kata kunci atau wilayah lainnya."}
 							</p>
 							<button
 								type="button"
@@ -711,7 +822,10 @@ export function LandingPage({
 						</div>
 					)}
 					<div className="mt-8 flex justify-center">
-						<Link href="/lowongan" className="btn btn-outline btn-primary rounded-full border-primary px-6 text-xs font-bold hover:bg-primary hover:text-white">
+						<Link
+							href="/lowongan"
+							className="btn btn-outline btn-primary rounded-full border-primary px-6 text-xs font-bold hover:bg-primary hover:text-white"
+						>
 							Lihat lowongan aktif <ArrowRight size={15} />
 						</Link>
 					</div>
@@ -720,7 +834,7 @@ export function LandingPage({
 
 			<section id="cara-kerja" className="scroll-mt-[76px] py-24 sm:py-28">
 				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="mx-auto max-w-2xl text-center">
+					<div className="mx-auto max-w-2xl text-center" data-reveal="fade-up">
 						<span className="badge badge-outline border-primary/20 bg-white px-4 py-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-primary">
 							Mulai dengan mudah
 						</span>
@@ -754,11 +868,13 @@ export function LandingPage({
 								title: "Kirim lamaran & pantau",
 								text: "Gunakan CV otomatis, kirim lamaran, lalu pantau perkembangan seleksimu.",
 							},
-						].map((item) => {
+						].map((item, index) => {
 							const Icon = item.icon;
 							return (
 								<article
 									key={item.step}
+									data-reveal="zoom"
+									data-reveal-delay={index * 130}
 									className="relative z-10 flex flex-col items-center px-4 text-center"
 								>
 									<div className="relative grid h-20 w-20 place-items-center rounded-[1.7rem] border border-primary/10 bg-white text-primary shadow-lg shadow-primary/5">
@@ -782,7 +898,10 @@ export function LandingPage({
 
 			<section id="tentang" className="scroll-mt-[76px] pb-24 sm:pb-28">
 				<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-					<div className="relative overflow-hidden rounded-[2rem] bg-secondary px-6 py-12 text-white shadow-2xl shadow-primary/10 sm:px-10 sm:py-14 lg:px-14">
+					<div
+						className="relative overflow-hidden rounded-[2rem] bg-secondary px-6 py-12 text-white shadow-2xl shadow-primary/10 sm:px-10 sm:py-14 lg:px-14"
+						data-reveal="fade-up"
+					>
 						<div className="pointer-events-none absolute -right-20 -top-32 h-80 w-80 rounded-full border border-white/10" />
 						<div className="pointer-events-none absolute -right-4 -top-16 h-56 w-56 rounded-full border border-white/10" />
 						<div className="relative grid items-center gap-9 lg:grid-cols-[1fr_auto]">
@@ -798,12 +917,18 @@ export function LandingPage({
 									proses rekrutmen yang lebih terstruktur.
 								</p>
 							</div>
-							<div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+							<div
+								className="flex flex-col gap-3 sm:flex-row lg:flex-col"
+								data-reveal="fade-left"
+							>
 								<Link
-									href={isAuthenticated ? "/dashboard" : "/auth/sign-up/employer"}
+									href={
+										isAuthenticated ? "/dashboard" : "/auth/sign-up/employer"
+									}
 									className="btn h-12 rounded-full border-0 bg-[#ECF0F1] px-7 font-bold text-primary hover:bg-white"
 								>
-									{isAuthenticated ? "Dashboard" : "Sign up"} <ArrowUpRight size={16} />
+									{isAuthenticated ? "Dashboard" : "Sign up"}{" "}
+									<ArrowUpRight size={16} />
 								</Link>
 								<Link
 									href="#cara-kerja"

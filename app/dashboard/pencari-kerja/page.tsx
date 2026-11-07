@@ -237,7 +237,7 @@ export default async function JobSeekerDashboardPage() {
 						</span>
 
 						<h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-[2.15rem]">
-							Halo, {firstName}! 👋
+							Halo, {firstName}!
 						</h1>
 
 						<p className="mt-2 max-w-xl text-sm leading-6 text-white/70">
