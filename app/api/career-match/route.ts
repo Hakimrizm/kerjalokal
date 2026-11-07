@@ -51,12 +51,17 @@ export async function POST(req: Request) {
       );
     }
 
+<<<<<<< HEAD
     const { data: roleRow, error: roleError } = await supabase
+=======
+    const { data: roleRow } = await supabase
+>>>>>>> b96e565cc610b719a55391a3e68793219d83edfc
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .maybeSingle();
 
+<<<<<<< HEAD
     if (roleError || !roleRow?.role) {
       return NextResponse.json(
         { error: "Role pengguna tidak dapat diverifikasi." },
@@ -81,6 +86,15 @@ export async function POST(req: Request) {
         );
       }
       targetApplicantId = applicantId;
+=======
+    const role = roleRow?.role || "job_seeker";
+
+    let targetApplicantId = user.id;
+    if (role === "employer" || role === "admin" || role === "super_admin") {
+      if (applicantId) {
+        targetApplicantId = applicantId;
+      }
+>>>>>>> b96e565cc610b719a55391a3e68793219d83edfc
     }
 
     const { data: job, error: jobError } = await supabase
@@ -96,6 +110,7 @@ export async function POST(req: Request) {
       );
     }
 
+<<<<<<< HEAD
     if (role === "employer") {
       if (job.employer_id !== user.id) {
         return NextResponse.json(
@@ -117,6 +132,13 @@ export async function POST(req: Request) {
           { status: 403 }
         );
       }
+=======
+    if (role === "employer" && job.employer_id !== user.id) {
+      return NextResponse.json(
+        { error: "Anda hanya dapat memeriksa kecocokan pelamar pada lowongan milik usaha Anda." },
+        { status: 403 }
+      );
+>>>>>>> b96e565cc610b719a55391a3e68793219d83edfc
     }
 
     const { data: employer } = await supabase
@@ -143,6 +165,7 @@ export async function POST(req: Request) {
 
     const profile = profileRes.data;
     const jobProfile = jobProfileRes.data;
+<<<<<<< HEAD
     const skills = ((skillsRes.data ?? []) as { skill_name: string }[]).map((skill) => skill.skill_name);
     const experiences = (
       (experiencesRes.data ?? []) as {
@@ -178,6 +201,23 @@ export async function POST(req: Request) {
     ).map((certificate) => ({
       name: certificate.certificate_name,
       issuer: certificate.issuer,
+=======
+    const skills = (skillsRes.data ?? []).map((s) => s.skill_name);
+    const experiences = (experiencesRes.data ?? []).map((e) => ({
+      position: e.position,
+      company: e.company,
+      duration: `${e.start_date || ""} s/d ${e.is_current ? "Sekarang" : e.end_date || ""}`,
+      description: e.description,
+    }));
+    const education = (educationRes.data ?? []).map((ed) => ({
+      level: ed.education_level,
+      institution: ed.institution,
+      major: ed.major,
+    }));
+    const certificates = (certificatesRes.data ?? []).map((c) => ({
+      name: c.certificate_name,
+      issuer: c.issuer,
+>>>>>>> b96e565cc610b719a55391a3e68793219d83edfc
     }));
 
     const applicantData: ApplicantData = {

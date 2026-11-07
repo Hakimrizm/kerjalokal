@@ -88,6 +88,12 @@ export default async function JobSeekerDashboardPage() {
 			.select("id, certificate_name, issuer, issue_date")
 			.eq("user_id", user.id)
 			.order("issue_date", { ascending: false }),
+
+		supabase
+			.from("job_applications")
+			.select("id, status, applied_at")
+			.eq("applicant_id", user.id)
+			.order("applied_at", { ascending: false }),
 	]);
 
 	const profile = profileResult.data;

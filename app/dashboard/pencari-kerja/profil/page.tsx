@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { JobSeekerSummaryEditor } from "@/components/job-seeker-summary-editor";
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -211,27 +212,44 @@ export default async function JobSeekerProfilePage() {
 				</div>
 			</section>
 
-			<section className="mt-5 flex flex-col gap-4 rounded-2xl border border-[#DCE5E8] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
-				<div className="flex items-start gap-3">
-					<span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]">
-						<FileUser size={20} />
-					</span>
-					<div>
-						<h2 className="text-sm font-extrabold text-[#2C3E50]">
-							CV Profesional Otomatis
-						</h2>
-						<p className="mt-1 max-w-2xl text-xs leading-5 text-[#7F8C8D]">
-							Data profilmu sudah dapat disusun menjadi CV berformat ATS. Lihat
-							pratinjau atau unduh PDF untuk digunakan melamar pekerjaan.
-						</p>
+			<section className="overflow-hidden rounded-[26px] bg-white shadow-sm">
+				<div className="h-28 bg-gradient-to-r from-[#2C3E50] via-[#34495E] to-[#7F8C8D] sm:h-36" />
+				<div className="px-5 pb-6 sm:px-8">
+					<div className="-mt-11 flex flex-col gap-4 sm:-mt-12 sm:flex-row sm:items-end sm:justify-between">
+						<div className="flex min-w-0 items-end gap-4">
+							{signedPhoto?.signedUrl ? (
+								<img
+									src={signedPhoto.signedUrl}
+									alt={`Foto profil ${name}`}
+									className="h-24 w-24 rounded-2xl border-4 border-white object-cover shadow-md sm:h-28 sm:w-28"
+								/>
+							) : (
+								<span className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl border-4 border-white bg-[#DCE4E8] text-2xl font-extrabold text-[#34495E] shadow-md sm:h-28 sm:w-28">
+									{initials || "PK"}
+								</span>
+							)}
+							<div className="min-w-0 pb-1">
+								<span className="badge badge-outline border-[#DCE3E6] bg-[#F7F9FA] text-[10px] font-bold text-[#53616D]">
+									PROFIL PENCARI KERJA
+								</span>
+								<h1 className="mt-2 truncate text-xl font-extrabold tracking-tight text-[#2C3E50] sm:text-2xl">
+									{name}
+								</h1>
+								<p className="mt-1 flex items-center gap-1.5 text-xs text-[#7F8C8D]">
+									<MapPin size={13} />
+									{location || "Lokasi belum ditambahkan"}
+								</p>
+							</div>
+						</div>
+						<Link
+							href={editHref("identity")}
+							className="btn btn-primary min-h-11 rounded-xl border-0 bg-[#2C3E50] px-5 text-xs font-bold text-white hover:bg-[#34495E]"
+						>
+							<Pencil size={15} /> Edit Profil
+						</Link>
 					</div>
+					<JobSeekerSummaryEditor initialSummary={jobProfile?.summary ?? ""} />
 				</div>
-				<Link
-					href="/dashboard/pencari-kerja/cv"
-					className="btn min-h-10 shrink-0 rounded-xl border-0 bg-[#2C3E50] px-4 text-xs font-bold text-white hover:bg-[#34495E]"
-				>
-					Preview CV <ArrowRight size={14} />
-				</Link>
 			</section>
 
 			<div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.75fr)]">
@@ -347,57 +365,79 @@ export default async function JobSeekerProfilePage() {
 
 					<section className="overflow-hidden rounded-2xl border border-[#E2E7E9] bg-white shadow-sm">
 						<SectionHeading
-							icon={GraduationCap}
-							title="Pendidikan"
-							subtitle="Riwayat pendidikan formal maupun nonformal"
-							href={editHref("education")}
+							icon={Sparkles}
+							title="Keahlian & preferensi kerja"
+							subtitle="Skill dan jenis pekerjaan yang diminati"
+							href={editHref("skills")}
 						/>
-						{educations.length ? (
-							<div className="divide-y divide-[#EEF1F2]">
-								{educations.map(
-									(item: {
-										id: string;
-										education_level: string;
-										institution: string;
-										major: string | null;
-										start_year: number | null;
-										end_year: number | null;
-										is_current: boolean;
-										description: string | null;
-									}) => (
-										<div key={item.id} className="flex gap-3 px-5 py-4 sm:px-6">
-											<span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ECF0F1] text-[#53616D]">
-												<GraduationCap size={18} />
+						<div className="p-5 sm:p-6">
+							<div className="grid gap-4 sm:grid-cols-2">
+								<div>
+									<p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">
+										Posisi yang dicari
+									</p>
+									<p className="mt-1.5 text-sm font-semibold text-[#53616D]">
+										{jobProfile?.desired_position || "Belum diisi"}
+									</p>
+								</div>
+								<div>
+									<p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">
+										Kategori
+									</p>
+									<p className="mt-1.5 text-sm font-semibold text-[#53616D]">
+										{jobProfile?.job_category || "Belum diisi"}
+									</p>
+								</div>
+								<div>
+									<p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">
+										Tipe pekerjaan
+									</p>
+									<p className="mt-1.5 text-sm font-semibold text-[#53616D]">
+										{jobProfile?.employment_types?.join(", ") ||
+											"Belum dipilih"}
+									</p>
+								</div>
+								<div>
+									<p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">
+										Ketersediaan
+									</p>
+									<p className="mt-1.5 text-sm font-semibold text-[#53616D]">
+										{jobProfile?.availability || "Belum diatur"}
+									</p>
+								</div>
+								<div className="sm:col-span-2">
+									<p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">
+										Tentang Saya (Ringkasan)
+									</p>
+									<p className="mt-1.5 text-xs leading-6 text-[#53616D]">
+										{jobProfile?.summary || "Belum ada ringkasan profil."}
+									</p>
+								</div>
+							</div>
+							<div className="mt-5 border-t border-[#EEF1F2] pt-4">
+								<p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">
+									Daftar keahlian
+								</p>
+								{skills.length ? (
+									<div className="mt-3 flex flex-wrap gap-2">
+										{skills.map((skill: { id: string; skill_name: string }) => (
+											<span
+												key={skill.id}
+												className="rounded-full bg-[#F1F4F5] px-3 py-2 text-xs font-semibold text-[#53616D]"
+											>
+												{skill.skill_name}
 											</span>
-											<div className="min-w-0 flex-1">
-												<p className="text-sm font-extrabold text-[#34495E]">
-													{item.institution}
-												</p>
-												<p className="mt-1 text-xs text-[#667681]">
-													{item.education_level}
-													{item.major ? ` · ${item.major}` : ""}
-												</p>
-												<p className="mt-1 text-[10px] text-[#9AA5AB]">
-													{item.start_year || "—"} –{" "}
-													{item.is_current ? "Sekarang" : item.end_year || "—"}
-												</p>
-												{item.description && (
-													<p className="mt-2 text-xs leading-5 text-[#7F8C8D]">
-														{item.description}
-													</p>
-												)}
-											</div>
-										</div>
-									),
+										))}
+									</div>
+								) : (
+									<EmptySection
+										text="Belum ada keahlian."
+										href={editHref("skills")}
+										action="Tambah keahlian"
+									/>
 								)}
 							</div>
-						) : (
-							<EmptySection
-								text="Belum ada riwayat pendidikan yang ditambahkan."
-								href={editHref("education")}
-								action="Tambah pendidikan"
-							/>
-						)}
+						</div>
 					</section>
 
 					<section className="overflow-hidden rounded-2xl border border-[#E2E7E9] bg-white shadow-sm">
