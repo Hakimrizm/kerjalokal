@@ -44,30 +44,46 @@ export function LoginForm({
       });
       if (loginError) throw loginError;
 
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.user.id)
         .maybeSingle();
 
-      if (roleData?.role === "employer") {
-        const { data: employerProfile } = await supabase
+      if (roleError) {
+        throw new Error(
+          "Role akun belum dapat diperiksa. Pastikan seluruh migrasi database KerjaLokal sudah dijalankan, lalu coba masuk kembali.",
+        );
+      }
+
+      if (!roleData?.role) {
+        throw new Error(
+          "Role akun belum terdaftar. Jalankan migrasi role KerjaLokal di Supabase sebelum masuk.",
+        );
+      }
+
+      if (roleData.role === "employer") {
+        const { data: employerProfile, error: employerProfileError } = await supabase
           .from("employer_profiles")
           .select("profile_completed")
           .eq("user_id", data.user.id)
           .maybeSingle();
+
+        if (employerProfileError) throw employerProfileError;
 
         router.replace(
           employerProfile?.profile_completed
             ? "/dashboard/pelaku-usaha"
             : "/onboarding/employer",
         );
-      } else if (!roleData || roleData.role === "job_seeker") {
-        const { data: jobProfile } = await supabase
+      } else if (roleData.role === "job_seeker") {
+        const { data: jobProfile, error: jobProfileError } = await supabase
           .from("job_seeker_profiles")
           .select("profile_completed")
           .eq("user_id", data.user.id)
           .maybeSingle();
+
+        if (jobProfileError) throw jobProfileError;
 
         const safeNextPath =
           nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
@@ -78,8 +94,13 @@ export function LoginForm({
             ? safeNextPath ?? "/dashboard/pencari-kerja"
             : "/onboarding/job-seeker",
         );
-      } else {
+      } else if (
+        roleData.role === "super_admin" ||
+        roleData.role === "fraud_admin"
+      ) {
         router.replace("/protected");
+      } else {
+        throw new Error("Role akun tidak dikenali. Hubungi administrator KerjaLokal.");
       }
       router.refresh();
     } catch (caughtError: unknown) {

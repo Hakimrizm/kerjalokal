@@ -72,8 +72,21 @@ export function EmployerSignUpForm() {
         throw signupError;
       }
 
-      if (!data.session) {
+      if (!data.session || !data.user) {
         throw new Error("Akun belum mendapatkan sesi login. Pastikan Authentication → Sign In / Providers → Email → Confirm email sudah OFF.");
+      }
+
+      // Jangan lanjutkan onboarding jika database masih memberi role job_seeker.
+      const { data: roleRow, error: roleCheckError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (roleCheckError || roleRow?.role !== "employer") {
+        throw new Error(
+          "Role Pelaku Usaha belum tersimpan dengan benar. Jalankan migrasi database KerjaLokal 0002 dan 0003 di Supabase, lalu masuk kembali menggunakan akun ini.",
+        );
       }
 
       router.replace("/onboarding/employer");

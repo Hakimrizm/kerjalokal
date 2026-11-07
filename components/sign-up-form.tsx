@@ -83,15 +83,28 @@ export function SignUpForm() {
         throw signUpError;
       }
 
-      if (data.session) {
-        // Email confirmation OFF: pengguna langsung memiliki session.
+      if (data.session && data.user) {
+        // Pastikan database benar-benar menyimpan role yang dipilih.
+        // Jika migrasi role belum dijalankan, jangan biarkan akun salah diarahkan.
+        const { data: roleRow, error: roleCheckError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        if (roleCheckError || roleRow?.role !== "job_seeker") {
+          throw new Error(
+            "Role Pencari Kerja belum tersimpan dengan benar. Jalankan migrasi database KerjaLokal 0002 dan 0003 di Supabase, lalu masuk kembali menggunakan akun ini.",
+          );
+        }
+
         router.replace("/onboarding/job-seeker");
         router.refresh();
         return;
       }
 
       // Jangan arahkan pengguna ke halaman konfirmasi email.
-      // Session yang kosong biasanya berarti Confirm email masih aktif.
+      // Session kosong berarti Confirm email masih aktif di Supabase.
       setError(
         "Akun belum mendapatkan sesi login. Buka Supabase Dashboard → Authentication → Sign In / Providers → Email, lalu nonaktifkan opsi Confirm email. Setelah itu, coba daftar kembali.",
       );
