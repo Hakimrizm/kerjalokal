@@ -96,6 +96,7 @@ type Props = {
 	userId: string;
 	initialName: string;
 	isEditing?: boolean;
+	initialStep?: number;
 };
 
 const steps = [
@@ -280,9 +281,10 @@ export function JobSeekerOnboarding({
 	userId,
 	initialName,
 	isEditing = false,
+	initialStep = 0,
 }: Props) {
 	const router = useRouter();
-	const [currentStep, setCurrentStep] = useState(0);
+	const [currentStep, setCurrentStep] = useState(() => (isEditing ? Math.max(0, Math.min(4, initialStep)) : 0));
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [geoLoading, setGeoLoading] = useState(false);
@@ -414,7 +416,7 @@ export function JobSeekerOnboarding({
 				});
 				setCurrentStep(
 					isEditing
-						? 0
+						? Math.max(0, Math.min(4, initialStep))
 						: Math.max(
 								0,
 								Math.min(4, (savedPreferences.onboarding_step ?? 1) - 1),
@@ -487,7 +489,7 @@ export function JobSeekerOnboarding({
 		return () => {
 			active = false;
 		};
-	}, [userId, initialName, isEditing]);
+	}, [userId, initialName, isEditing, initialStep]);
 
 	function updateIdentity<K extends keyof IdentityForm>(
 		key: K,
@@ -1026,6 +1028,15 @@ export function JobSeekerOnboarding({
 
 		try {
 			await saveCurrentStep();
+
+			if (isEditing) {
+				// Mode edit hanya menyimpan bagian yang sedang dibuka.
+				// Setelah tersimpan, kembali ke halaman Profil Saya.
+				router.replace("/dashboard/pencari-kerja/profil");
+				router.refresh();
+				return;
+			}
+
 			if (currentStep === steps.length - 1) {
 				router.replace("/dashboard/pencari-kerja");
 				router.refresh();
@@ -1092,7 +1103,8 @@ export function JobSeekerOnboarding({
 					</div>
 				</header>
 
-				<div className="grid items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)] xl:gap-7">
+				<div className={isEditing ? "mx-auto max-w-4xl" : "grid items-start gap-5 lg:grid-cols-[290px_minmax(0,1fr)] xl:gap-7"}>
+					{!isEditing && (
 					<aside className="rounded-[1.75rem] bg-[#2C3E50] p-5 text-white shadow-xl shadow-[#2C3E50]/10 sm:p-6 lg:sticky lg:top-6">
 						<div className="hidden lg:block">
 							<span className="badge badge-outline border-white/20 bg-white/5 px-3 py-3 text-[10px] font-bold tracking-wider text-[#BDC3C7]">
@@ -1211,13 +1223,14 @@ export function JobSeekerOnboarding({
 							</p>
 						</div>
 					</aside>
+					)}
 
 					<section className="min-w-0 overflow-hidden rounded-[1.75rem] border border-[#BDC3C7]/65 bg-white shadow-xl shadow-[#2C3E50]/5">
 						<div className="border-b border-[#BDC3C7]/45 px-5 py-5 sm:px-8 sm:py-7">
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
 									<div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#7F8C8D]">
-										<CurrentIcon size={14} /> Tahap {currentStep + 1}
+										<CurrentIcon size={14} /> {isEditing ? "EDIT PROFIL" : `TAHAP ${currentStep + 1} DARI 5`}
 									</div>
 									<h2 className="mt-2 text-2xl font-extrabold tracking-tight text-[#2C3E50] sm:text-[1.8rem]">
 										{currentStep === 0 && "Identitas & lokasi"}
@@ -1227,17 +1240,18 @@ export function JobSeekerOnboarding({
 										{currentStep === 4 && "Sertifikat & portofolio"}
 									</h2>
 									<p className="mt-2 max-w-2xl text-xs leading-6 text-[#7F8C8D] sm:text-sm">
-										{currentStep === 0 &&
-											"Informasi dasar membantu pelaku usaha mengenalmu dan membantu sistem menemukan lowongan di wilayahmu."}
-										{currentStep === 1 &&
-											"Tambahkan kemampuan dan jenis pekerjaan yang kamu inginkan agar rekomendasi lebih tepat."}
-										{currentStep === 2 &&
-											"Masukkan pendidikan formal maupun nonformal. Kamu dapat menambahkan lebih dari satu riwayat."}
-										{currentStep === 3 &&
-											"Ceritakan pengalaman kerja, magang, organisasi, atau pekerjaan lepas. Fresh graduate boleh melewati tahap ini."}
-										{currentStep === 4 &&
-											"Tambahkan sertifikat, tautan portofolio, dan informasi pendukung lainnya jika tersedia."}
-									</p>
+									{isEditing
+										? "Perbarui informasi pada bagian ini saja. Bagian profil lainnya tidak akan berubah. Setelah disimpan, kamu akan kembali ke halaman Profil Saya."
+										: currentStep === 0
+											? "Informasi dasar membantu pelaku usaha mengenalmu dan membantu sistem menemukan lowongan di wilayahmu."
+											: currentStep === 1
+												? "Tambahkan kemampuan dan jenis pekerjaan yang kamu inginkan agar rekomendasi lebih tepat."
+												: currentStep === 2
+													? "Masukkan pendidikan formal maupun nonformal. Kamu dapat menambahkan lebih dari satu riwayat."
+													: currentStep === 3
+														? "Ceritakan pengalaman kerja, magang, organisasi, atau pekerjaan lepas. Fresh graduate boleh melewati tahap ini."
+														: "Tambahkan sertifikat, tautan portofolio, dan informasi pendukung lainnya jika tersedia."}
+								</p>
 								</div>
 								<span className="hidden h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#ECF0F1] text-[#34495E] sm:grid">
 									<CurrentIcon size={22} />
@@ -2586,11 +2600,17 @@ export function JobSeekerOnboarding({
 								<div className="flex flex-col-reverse gap-3 border-t border-[#BDC3C7]/50 pt-5 sm:flex-row sm:items-center sm:justify-between">
 									<button
 										type="button"
-										onClick={handleBack}
-										disabled={currentStep === 0 || saving}
+										onClick={() => {
+							if (isEditing) {
+								router.replace("/dashboard/pencari-kerja/profil");
+								return;
+							}
+							handleBack();
+						}}
+										disabled={(!isEditing && currentStep === 0) || saving}
 										className="btn btn-ghost min-h-12 rounded-xl px-5 text-sm font-bold text-[#53616D] hover:bg-[#ECF0F1] disabled:opacity-40"
 									>
-										<ArrowLeft size={16} /> Kembali
+										<ArrowLeft size={16} /> {isEditing ? "Batal" : "Kembali"}
 									</button>
 									<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
 										{currentStep === 3 && !noExperience && (
@@ -2613,7 +2633,11 @@ export function JobSeekerOnboarding({
 													<LoaderCircle size={17} className="animate-spin" />{" "}
 													Menyimpan...
 												</>
-											) : currentStep === steps.length - 1 ? (
+											) : isEditing ? (
+								<>
+									Simpan Perubahan <CheckCircle2 size={17} />
+								</>
+							) : currentStep === steps.length - 1 ? (
 												<>
 													Simpan & Selesaikan <CheckCircle2 size={17} />
 												</>

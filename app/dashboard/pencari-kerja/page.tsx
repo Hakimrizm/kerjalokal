@@ -1,17 +1,47 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { JobSeekerDashboardSignOut } from "@/components/jobseeker-dashboard-signout";
 import {
   ArrowRight,
+  ArrowUpRight,
+  Award,
   BriefcaseBusiness,
+  CalendarDays,
   CheckCircle2,
+  ChevronRight,
+  Clock3,
   FileUser,
+  GraduationCap,
+  LayoutDashboard,
   MapPin,
+  Plus,
+  Search,
   Sparkles,
+  UserRound,
+  Wallet,
 } from "lucide-react";
 
-// Dashboard memakai session Supabase per request, sehingga harus dirender dinamis.
 export const instant = false;
+
+function formatDate(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatSalary(value?: number | string | null) {
+  if (value === null || value === undefined || value === "") return null;
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(Number(value));
+}
 
 export default async function JobSeekerDashboardPage() {
   const supabase = await createClient();
@@ -19,118 +49,562 @@ export default async function JobSeekerDashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/auth/login?next=/dashboard/pencari-kerja");
 
-  const [{ data: profile }, { data: jobProfile }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("full_name, city, district, village")
-      .eq("id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("job_seeker_profiles")
-      .select("profile_completed")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+  const [
+    profileResult,
+    jobProfileResult,
+    skillsResult,
+    educationResult,
+    experienceResult,
+    certificateResult,
+  ] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase.from("job_seeker_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    supabase.from("job_seeker_skills").select("id, skill_name").eq("user_id", user.id).order("skill_name"),
+    supabase.from("job_seeker_education").select("id, education_level, institution, major, start_year, end_year, is_current").eq("user_id", user.id).order("start_year", { ascending: false }),
+    supabase.from("job_seeker_experiences").select("id, company, position, location, start_date, end_date, is_current, description").eq("user_id", user.id).order("start_date", { ascending: false }),
+    supabase.from("job_seeker_certificates").select("id, certificate_name, issuer, issue_date").eq("user_id", user.id).order("issue_date", { ascending: false }),
   ]);
+
+  const profile = profileResult.data;
+  const jobProfile = jobProfileResult.data;
 
   if (!jobProfile?.profile_completed) {
     redirect("/onboarding/job-seeker");
   }
 
-  const name = profile?.full_name || user.user_metadata?.full_name || "Pencari Kerja";
+  const skills = skillsResult.data ?? [];
+  const educations = educationResult.data ?? [];
+  const experiences = experienceResult.data ?? [];
+  const certificates = certificateResult.data ?? [];
+
+  const name =
+    profile?.full_name ||
+    user.user_metadata?.full_name ||
+    "Pencari Kerja";
+  const firstName = name.trim().split(/\s+/)[0] || "Teman";
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part: string) => part[0])
+    .join("")
+    .toUpperCase();
+
   const location = [profile?.village, profile?.district, profile?.city]
     .filter(Boolean)
     .join(", ");
 
+  const identityChecks = [
+    profile?.full_name,
+    profile?.phone,
+    profile?.birth_date,
+    profile?.province,
+    profile?.city,
+    profile?.district,
+    profile?.village,
+    profile?.address,
+  ];
+  const careerChecks = [
+    jobProfile?.desired_position,
+    jobProfile?.job_category,
+    jobProfile?.availability,
+    jobProfile?.employment_types?.length,
+    skills.length,
+  ];
+  const completenessChecks = [...identityChecks, ...careerChecks, educations.length > 0];
+  const profileCompletion = Math.round(
+    (completenessChecks.filter(Boolean).length / completenessChecks.length) * 100,
+  );
+
+  const { data: signedPhoto } = profile?.photo_path
+    ? await supabase.storage
+        .from("profile-photos")
+        .createSignedUrl(profile.photo_path, 60 * 60)
+    : { data: null };
+
+  const salaryMin = formatSalary(jobProfile?.expected_salary_min);
+  const salaryMax = formatSalary(jobProfile?.expected_salary_max);
+  const salaryText =
+    salaryMin && salaryMax
+      ? `${salaryMin} – ${salaryMax}`
+      : salaryMin
+        ? `Mulai ${salaryMin}`
+        : salaryMax
+          ? `Maksimal ${salaryMax}`
+          : "Belum ditentukan";
+
+  const quickLinks = [
+    {
+      title: "Data diri",
+      description: "Perbarui identitas dan lokasi",
+      href: "/onboarding/job-seeker?edit=1&step=identity",
+      icon: UserRound,
+    },
+    {
+      title: "Keahlian",
+      description: "Tambah atau ubah keterampilan",
+      href: "/onboarding/job-seeker?edit=1&step=skills",
+      icon: Sparkles,
+    },
+    {
+      title: "Pendidikan",
+      description: "Tambah riwayat pendidikan",
+      href: "/onboarding/job-seeker?edit=1&step=education",
+      icon: GraduationCap,
+    },
+    {
+      title: "Pengalaman kerja",
+      description: "Tambah pengalaman terbaru",
+      href: "/onboarding/job-seeker?edit=1&step=experience",
+      icon: BriefcaseBusiness,
+    },
+    {
+      title: "Sertifikat",
+      description: "Tambah sertifikat dan pelatihan",
+      href: "/onboarding/job-seeker?edit=1&step=certificates",
+      icon: Award,
+    },
+  ];
+
   return (
-    <main className="min-h-screen bg-[#ECF0F1] px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#2C3E50] text-white">
+    <main className="min-h-screen bg-[#F3F5F6] text-[#2C3E50]">
+      <div className="mx-auto flex min-h-screen max-w-[1600px]">
+        {/* Desktop sidebar */}
+        <aside className="sticky top-0 hidden h-screen w-[258px] shrink-0 flex-col border-r border-[#DCE2E5] bg-white px-5 py-7 lg:flex">
+          <Link href="/" className="mb-10 flex items-center gap-3 px-2">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#2C3E50] text-white shadow-lg shadow-[#2C3E50]/10">
               <BriefcaseBusiness size={21} />
             </span>
-            <span className="text-lg font-extrabold tracking-tight text-[#2C3E50]">
-              kerja<span className="text-[#7F8C8D]">lokal</span>
+            <span>
+              <span className="block text-[19px] font-extrabold leading-none tracking-tight">
+                kerja<span className="text-[#7F8C8D]">lokal</span>
+              </span>
+              <span className="mt-1 block text-[9px] font-bold uppercase tracking-[0.14em] text-[#8A969D]">
+                Peluang dekat, masa depan hebat
+              </span>
             </span>
           </Link>
-          <span className="badge badge-outline border-[#BDC3C7] bg-white px-3 py-3 text-xs font-semibold text-[#34495E]">
-            Pencari Kerja
-          </span>
-        </header>
 
-        <section className="mt-10 overflow-hidden rounded-[2rem] bg-[#2C3E50] text-white shadow-xl shadow-[#2C3E50]/10">
-          <div className="relative px-6 py-10 sm:px-10 sm:py-14">
-            <div className="pointer-events-none absolute -right-20 -top-36 h-80 w-80 rounded-full border border-white/10" />
-            <div className="pointer-events-none absolute -right-2 -top-20 h-56 w-56 rounded-full border border-white/10" />
-            <div className="relative max-w-2xl">
-              <span className="badge badge-outline border-white/25 bg-white/10 px-3 py-3 text-[10px] font-bold tracking-wider text-[#ECF0F1]">
-                <CheckCircle2 size={13} /> PROFIL BERHASIL DILENGKAPI
-              </span>
-              <h1 className="mt-5 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Selamat datang, {name}!
-              </h1>
-              <p className="mt-3 max-w-xl text-sm leading-7 text-white/70 sm:text-base">
-                Profil pencari kerjamu sudah tersimpan. Sekarang kamu bisa
-                melanjutkan perjalanan untuk menemukan peluang kerja yang
-                sesuai dengan kemampuan dan lokasi tempat tinggalmu.
-              </p>
-              {location && (
-                <p className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-[#BDC3C7]">
-                  <MapPin size={15} /> {location}
-                </p>
-              )}
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <p className="mb-3 px-3 text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#9AA5AB]">
+            Menu utama
+          </p>
+          <nav className="space-y-1">
+            <Link
+              href="/dashboard/pencari-kerja"
+              className="flex items-center gap-3 rounded-xl bg-[#2C3E50] px-3.5 py-3 text-sm font-bold text-white shadow-md shadow-[#2C3E50]/10"
+            >
+              <LayoutDashboard size={18} />
+              Ringkasan
+            </Link>
+            <Link
+              href="/dashboard/pencari-kerja/profil"
+              className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
+            >
+              <UserRound size={18} />
+              Profil Saya
+              <ChevronRight size={15} className="ml-auto text-[#AAB4BA]" />
+            </Link>
+            <Link
+              href="/#lowongan"
+              className="flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold text-[#667681] transition hover:bg-[#ECF0F1] hover:text-[#2C3E50]"
+            >
+              <Search size={18} />
+              Cari Lowongan
+              <ArrowUpRight size={14} className="ml-auto text-[#AAB4BA]" />
+            </Link>
+          </nav>
+
+          <div className="mt-auto rounded-2xl bg-[#ECF0F1] p-4">
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#34495E]">
+              <CheckCircle2 size={15} />
+              Profil pencari kerja
+            </div>
+            <p className="text-[11px] leading-5 text-[#7F8C8D]">
+              Perbarui informasi agar peluang yang kamu temukan semakin relevan.
+            </p>
+            <Link
+              href="/dashboard/pencari-kerja/profil"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-extrabold text-[#2C3E50] hover:underline"
+            >
+              Kelola profil <ArrowRight size={13} />
+            </Link>
+          </div>
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          {/* Top bar */}
+          <header className="sticky top-0 z-30 border-b border-[#DCE2E5] bg-white/90 backdrop-blur-xl">
+            <div className="flex min-h-[72px] items-center justify-between gap-3 px-4 sm:px-7 lg:px-9">
+              <div className="flex items-center gap-3 lg:hidden">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2C3E50] text-white">
+                  <BriefcaseBusiness size={19} />
+                </span>
+                <span className="text-lg font-extrabold tracking-tight">
+                  kerja<span className="text-[#7F8C8D]">lokal</span>
+                </span>
+              </div>
+              <div className="hidden lg:block">
+                <p className="text-xs font-semibold text-[#8A969D]">AREA PENCARI KERJA</p>
+                <p className="mt-0.5 text-sm font-bold text-[#34495E]">Dashboard</p>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-4">
                 <Link
-                  href="/#lowongan"
-                  className="btn min-h-12 rounded-full border-0 bg-[#ECF0F1] px-6 font-bold text-[#2C3E50] hover:bg-white"
+                  href="/dashboard/pencari-kerja/profil"
+                  className="hidden items-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-[#53616D] transition hover:bg-[#ECF0F1] sm:flex"
                 >
-                  Jelajahi Lowongan <ArrowRight size={17} />
+                  <UserRound size={16} />
+                  Profil Saya
                 </Link>
-                <Link
-                  href="/onboarding/job-seeker?edit=1"
-                  className="btn btn-outline min-h-12 rounded-full border-white/30 px-6 font-bold text-white hover:border-white hover:bg-white/10 hover:text-white"
-                >
-                  Perbarui Profil
-                </Link>
+                <div className="hidden h-8 w-px bg-[#E3E8EA] sm:block" />
+                <div className="flex items-center gap-2.5">
+                  {signedPhoto?.signedUrl ? (
+                    <img
+                      src={signedPhoto.signedUrl}
+                      alt={`Foto profil ${name}`}
+                      className="h-9 w-9 rounded-full border border-[#DCE2E5] object-cover"
+                    />
+                  ) : (
+                    <span className="grid h-9 w-9 place-items-center rounded-full bg-[#DCE4E8] text-xs font-extrabold text-[#34495E]">
+                      {initials || "PK"}
+                    </span>
+                  )}
+                  <div className="hidden min-w-0 sm:block">
+                    <p className="max-w-[150px] truncate text-xs font-extrabold text-[#34495E]">{name}</p>
+                    <p className="text-[10px] text-[#8A969D]">Pencari Kerja</p>
+                  </div>
+                </div>
+                <JobSeekerDashboardSignOut />
               </div>
             </div>
-          </div>
-        </section>
+            {/* Mobile navigation */}
+            <nav className="flex gap-1 overflow-x-auto border-t border-[#EEF1F2] px-4 py-2 lg:hidden">
+              <Link href="/dashboard/pencari-kerja" className="whitespace-nowrap rounded-full bg-[#2C3E50] px-3.5 py-2 text-xs font-bold text-white">
+                Ringkasan
+              </Link>
+              <Link href="/dashboard/pencari-kerja/profil" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
+                Profil Saya
+              </Link>
+              <Link href="/#lowongan" className="whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold text-[#53616D] hover:bg-[#ECF0F1]">
+                Cari Lowongan
+              </Link>
+            </nav>
+          </header>
 
-        <section className="mt-7 grid gap-4 md:grid-cols-3">
-          {[
-            {
-              icon: FileUser,
-              title: "Buat CV otomatis",
-              description: "Gunakan informasi profil untuk menyusun CV yang rapi.",
-            },
-            {
-              icon: Sparkles,
-              title: "Temukan kecocokan",
-              description: "Lihat kesesuaian skill dan preferensi dengan lowongan.",
-            },
-            {
-              icon: MapPin,
-              title: "Cari kerja lokal",
-              description: "Temukan peluang di desa dan kecamatan sekitar.",
-            },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <article key={item.title} className="card border border-[#BDC3C7]/60 bg-white shadow-sm">
-                <div className="card-body p-5">
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]">
-                    <Icon size={20} />
+          <div className="mx-auto max-w-[1250px] px-4 py-6 sm:px-7 sm:py-8 lg:px-9 lg:py-9">
+            {/* Welcome */}
+            <section className="relative overflow-hidden rounded-[28px] bg-[#2C3E50] p-6 text-white shadow-xl shadow-[#2C3E50]/10 sm:p-8 lg:p-9">
+              <div className="pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border border-white/10" />
+              <div className="pointer-events-none absolute right-24 -top-32 h-64 w-64 rounded-full border border-white/10" />
+              <div className="relative flex flex-col justify-between gap-7 md:flex-row md:items-center">
+                <div className="max-w-2xl">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-[#D9E1E5]">
+                    <Sparkles size={13} /> Ruang karier kamu
                   </span>
-                  <h2 className="mt-2 text-base font-extrabold text-[#2C3E50]">{item.title}</h2>
-                  <p className="text-sm leading-6 text-[#7F8C8D]">{item.description}</p>
+                  <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl lg:text-[2.15rem]">
+                    Halo, {firstName}! 👋
+                  </h1>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-white/70">
+                    Senang melihatmu kembali. Kelola profil, kembangkan kemampuan,
+                    dan temukan peluang kerja yang dekat dengan tempat tinggalmu.
+                  </p>
+                  {location && (
+                    <p className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-[#D5DEE3]">
+                      <MapPin size={15} /> {location}
+                    </p>
+                  )}
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link
+                      href="/#lowongan"
+                      className="btn min-h-11 rounded-full border-0 bg-[#ECF0F1] px-5 text-xs font-extrabold text-[#2C3E50] hover:bg-white"
+                    >
+                      Cari Lowongan <ArrowRight size={15} />
+                    </Link>
+                    <Link
+                      href="/dashboard/pencari-kerja/profil"
+                      className="btn btn-outline min-h-11 rounded-full border-white/30 px-5 text-xs font-bold text-white hover:border-white hover:bg-white/10 hover:text-white"
+                    >
+                      Lihat Profil
+                    </Link>
+                  </div>
                 </div>
+                <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm md:min-w-[220px] md:flex-col md:items-start md:p-5">
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/15 text-[#ECF0F1]">
+                    <CheckCircle2 size={25} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-white/65">Status akun</p>
+                    <p className="mt-1 text-base font-extrabold">Profil aktif</p>
+                    <p className="mt-1 text-[10px] text-white/55">Data profil tersimpan</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Overview stats */}
+            <section className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <article className="rounded-2xl border border-[#E2E7E9] bg-white p-4 shadow-sm shadow-[#2C3E50]/[0.02]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#7F8C8D]">Kelengkapan profil</span>
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><UserRound size={17} /></span>
+                </div>
+                <p className="mt-3 text-2xl font-extrabold text-[#2C3E50]">{profileCompletion}%</p>
+                <progress className="progress mt-2 h-1.5 w-full bg-[#E9EEF0] [--progress-color:#34495E]" value={profileCompletion} max="100" />
+                <Link href="/dashboard/pencari-kerja/profil" className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[#53616D] hover:underline">
+                  Lengkapi profil <ArrowRight size={12} />
+                </Link>
               </article>
-            );
-          })}
-        </section>
+              <article className="rounded-2xl border border-[#E2E7E9] bg-white p-4 shadow-sm shadow-[#2C3E50]/[0.02]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#7F8C8D]">Keahlian</span>
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><Sparkles size={17} /></span>
+                </div>
+                <p className="mt-3 text-2xl font-extrabold text-[#2C3E50]">{skills.length}</p>
+                <p className="mt-1 text-[11px] text-[#8A969D]">Skill tersimpan</p>
+              </article>
+              <article className="rounded-2xl border border-[#E2E7E9] bg-white p-4 shadow-sm shadow-[#2C3E50]/[0.02]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#7F8C8D]">Pendidikan</span>
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><GraduationCap size={18} /></span>
+                </div>
+                <p className="mt-3 text-2xl font-extrabold text-[#2C3E50]">{educations.length}</p>
+                <p className="mt-1 text-[11px] text-[#8A969D]">Riwayat pendidikan</p>
+              </article>
+              <article className="rounded-2xl border border-[#E2E7E9] bg-white p-4 shadow-sm shadow-[#2C3E50]/[0.02]">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#7F8C8D]">Pengalaman kerja</span>
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><BriefcaseBusiness size={17} /></span>
+                </div>
+                <p className="mt-3 text-2xl font-extrabold text-[#2C3E50]">{experiences.length}</p>
+                <p className="mt-1 text-[11px] text-[#8A969D]">Pengalaman tersimpan</p>
+              </article>
+            </section>
+
+            <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
+              <div className="space-y-6">
+                {/* Profile snapshot */}
+                <section className="overflow-hidden rounded-2xl border border-[#E2E7E9] bg-white shadow-sm shadow-[#2C3E50]/[0.02]">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF1F2] px-5 py-4 sm:px-6">
+                    <div>
+                      <h2 className="text-base font-extrabold text-[#2C3E50]">Ringkasan profil</h2>
+                      <p className="mt-1 text-xs text-[#8A969D]">Informasi utama yang dilihat saat menyiapkan lamaran.</p>
+                    </div>
+                    <Link href="/dashboard/pencari-kerja/profil" className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#34495E] hover:underline">
+                      Lihat semua <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                  <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">Posisi yang dicari</p>
+                      <p className="mt-1.5 text-sm font-bold text-[#34495E]">{jobProfile?.desired_position || "Belum diisi"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">Kategori pekerjaan</p>
+                      <p className="mt-1.5 text-sm font-bold text-[#34495E]">{jobProfile?.job_category || "Belum diisi"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">Tipe pekerjaan</p>
+                      <p className="mt-1.5 text-sm font-bold text-[#34495E]">{jobProfile?.employment_types?.length ? jobProfile.employment_types.join(", ") : "Belum dipilih"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">Ekspektasi gaji</p>
+                      <p className="mt-1.5 text-sm font-bold text-[#34495E]">{salaryText}</p>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#9AA5AB]">Tentang saya</p>
+                      <p className="mt-1.5 text-sm leading-6 text-[#667681]">{jobProfile?.summary || "Tambahkan ringkasan singkat tentang dirimu agar pelaku usaha lebih mudah mengenalmu."}</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Skills */}
+                <section className="rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm shadow-[#2C3E50]/[0.02] sm:p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-extrabold text-[#2C3E50]">Keahlian saya</h2>
+                      <p className="mt-1 text-xs text-[#8A969D]">Kemampuan yang dapat mendukung pekerjaanmu.</p>
+                    </div>
+                    <Link href="/onboarding/job-seeker?edit=1&step=skills" aria-label="Edit keahlian" className="btn btn-ghost btn-sm rounded-full text-[#34495E] hover:bg-[#ECF0F1]">
+                      <Plus size={16} /> <span className="hidden sm:inline">Tambah</span>
+                    </Link>
+                  </div>
+                  {skills.length ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {skills.map((skill: { id: string; skill_name: string }) => (
+                        <span key={skill.id} className="rounded-full border border-[#DCE3E6] bg-[#F5F7F8] px-3.5 py-2 text-xs font-semibold text-[#53616D]">
+                          {skill.skill_name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-dashed border-[#CBD4D9] bg-[#F8FAFA] px-4 py-5 text-center">
+                      <p className="text-sm font-semibold text-[#53616D]">Belum ada keahlian yang ditambahkan.</p>
+                      <Link href="/onboarding/job-seeker?edit=1&step=skills" className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-[#34495E] hover:underline">
+                        Tambahkan keahlian <ArrowRight size={13} />
+                      </Link>
+                    </div>
+                  )}
+                </section>
+
+                {/* Experience preview */}
+                <section className="rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm shadow-[#2C3E50]/[0.02] sm:p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-extrabold text-[#2C3E50]">Pengalaman kerja</h2>
+                      <p className="mt-1 text-xs text-[#8A969D]">Riwayat pekerjaan dan aktivitas profesional.</p>
+                    </div>
+                    <Link href="/onboarding/job-seeker?edit=1&step=experience" className="btn btn-ghost btn-sm rounded-full text-[#34495E] hover:bg-[#ECF0F1]">
+                      <Plus size={16} /> <span className="hidden sm:inline">Tambah</span>
+                    </Link>
+                  </div>
+                  {experiences.length ? (
+                    <div className="mt-5 space-y-4">
+                      {experiences.slice(0, 3).map((item: { id: string; position: string; company: string; location: string | null; start_date: string | null; end_date: string | null; is_current: boolean; description: string | null }) => (
+                        <div key={item.id} className="flex gap-3">
+                          <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]">
+                            <BriefcaseBusiness size={17} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-extrabold text-[#34495E]">{item.position}</p>
+                            <p className="mt-0.5 text-xs font-semibold text-[#667681]">{item.company}{item.location ? ` · ${item.location}` : ""}</p>
+                            <p className="mt-1 text-[10px] text-[#9AA5AB]">
+                              {formatDate(item.start_date)} – {item.is_current ? "Sekarang" : formatDate(item.end_date)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-xl border border-dashed border-[#CBD4D9] bg-[#F8FAFA] px-4 py-5">
+                      <div className="flex items-start gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ECF0F1] text-[#53616D]"><BriefcaseBusiness size={18} /></span>
+                        <div>
+                          <p className="text-sm font-semibold text-[#53616D]">Belum ada pengalaman kerja.</p>
+                          <p className="mt-1 text-xs leading-5 text-[#8A969D]">Fresh graduate tetap bisa menggunakan KerjaLokal. Kamu dapat menambahkan pengalaman magang, organisasi, atau pekerjaan paruh waktu jika ada.</p>
+                          <Link href="/onboarding/job-seeker?edit=1&step=experience" className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-[#34495E] hover:underline">
+                            Tambahkan pengalaman <ArrowRight size={13} />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </div>
+
+              <aside className="space-y-6">
+                {/* Quick profile editor */}
+                <section className="rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm shadow-[#2C3E50]/[0.02] sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-base font-extrabold text-[#2C3E50]">Kelola profil</h2>
+                      <p className="mt-1 text-xs text-[#8A969D]">Perbarui data kapan saja.</p>
+                    </div>
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ECF0F1] text-[#34495E]"><UserRound size={19} /></span>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    {quickLinks.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Link key={item.title} href={item.href} className="group flex items-center gap-3 rounded-xl border border-transparent px-3 py-3 transition hover:border-[#E2E7E9] hover:bg-[#F7F9FA]">
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#ECF0F1] text-[#53616D] transition group-hover:bg-[#2C3E50] group-hover:text-white">
+                            <Icon size={17} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-extrabold text-[#34495E]">{item.title}</span>
+                            <span className="mt-0.5 block text-[10px] text-[#8A969D]">{item.description}</span>
+                          </span>
+                          <ChevronRight size={15} className="text-[#AAB4BA] transition group-hover:translate-x-0.5" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                  <Link href="/dashboard/pencari-kerja/profil" className="btn btn-primary mt-4 min-h-11 w-full rounded-xl border-0 bg-[#2C3E50] text-xs font-extrabold text-white hover:bg-[#34495E]">
+                    Buka halaman profil <ArrowRight size={15} />
+                  </Link>
+                </section>
+
+                {/* Education */}
+                <section className="rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm shadow-[#2C3E50]/[0.02] sm:p-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-base font-extrabold text-[#2C3E50]">Pendidikan</h2>
+                    <Link href="/onboarding/job-seeker?edit=1&step=education" className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#34495E] hover:underline">
+                      <Plus size={13} /> Tambah
+                    </Link>
+                  </div>
+                  {educations.length ? (
+                    <div className="mt-4 space-y-4">
+                      {educations.slice(0, 2).map((item: { id: string; education_level: string; institution: string; major: string | null; start_year: number | null; end_year: number | null; is_current: boolean }) => (
+                        <div key={item.id} className="flex gap-3">
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#ECF0F1] text-[#53616D]"><GraduationCap size={17} /></span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-extrabold text-[#34495E]">{item.institution}</p>
+                            <p className="mt-0.5 text-[11px] text-[#7F8C8D]">{item.education_level}{item.major ? ` · ${item.major}` : ""}</p>
+                            <p className="mt-1 text-[10px] text-[#9AA5AB]">{item.start_year || "—"} – {item.is_current ? "Sekarang" : item.end_year || "—"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs leading-5 text-[#8A969D]">Tambahkan pendidikan terakhir untuk memperkuat profilmu.</p>
+                  )}
+                </section>
+
+                {/* Certificates */}
+                <section className="rounded-2xl border border-[#E2E7E9] bg-white p-5 shadow-sm shadow-[#2C3E50]/[0.02] sm:p-6">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-base font-extrabold text-[#2C3E50]">Sertifikat</h2>
+                    <Link href="/onboarding/job-seeker?edit=1&step=certificates" className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#34495E] hover:underline">
+                      <Plus size={13} /> Tambah
+                    </Link>
+                  </div>
+                  {certificates.length ? (
+                    <div className="mt-4 space-y-3">
+                      {certificates.slice(0, 2).map((item: { id: string; certificate_name: string; issuer: string; issue_date: string | null }) => (
+                        <div key={item.id} className="flex gap-3">
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#ECF0F1] text-[#53616D]"><Award size={17} /></span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-extrabold text-[#34495E]">{item.certificate_name}</p>
+                            <p className="mt-0.5 text-[11px] text-[#7F8C8D]">{item.issuer}</p>
+                            <p className="mt-1 text-[10px] text-[#9AA5AB]">{formatDate(item.issue_date)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs leading-5 text-[#8A969D]">Sertifikat pelatihan atau kursus bersifat opsional, tetapi dapat menambah nilai profil.</p>
+                  )}
+                </section>
+
+                {/* Career preference */}
+                <section className="rounded-2xl bg-[#E7ECEF] p-5 sm:p-6">
+                  <div className="flex items-center gap-2 text-[#34495E]">
+                    <Wallet size={17} />
+                    <h2 className="text-sm font-extrabold">Preferensi kerja</h2>
+                  </div>
+                  <div className="mt-3 space-y-3 text-xs">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-[#7F8C8D]">Ketersediaan</span>
+                      <span className="text-right font-bold text-[#34495E]">{jobProfile?.availability || "Belum diatur"}</span>
+                    </div>
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="text-[#7F8C8D]">Ekspektasi gaji</span>
+                      <span className="max-w-[60%] text-right font-bold text-[#34495E]">{salaryText}</span>
+                    </div>
+                  </div>
+                  <Link href="/onboarding/job-seeker?edit=1&step=skills" className="mt-4 inline-flex items-center gap-1 text-xs font-extrabold text-[#34495E] hover:underline">
+                    Ubah preferensi <ArrowRight size={13} />
+                  </Link>
+                </section>
+              </aside>
+            </div>
+
+            <footer className="mt-9 flex flex-col items-center justify-between gap-2 border-t border-[#DCE2E5] py-5 text-[10px] text-[#9AA5AB] sm:flex-row">
+              <span>© {new Date().getFullYear()} KerjaLokal. Peluang dekat, masa depan hebat.</span>
+              <span className="inline-flex items-center gap-1.5"><Clock3 size={12} /> Profil dapat diperbarui kapan saja</span>
+            </footer>
+          </div>
+        </div>
       </div>
     </main>
   );
